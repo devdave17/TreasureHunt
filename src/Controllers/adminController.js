@@ -1,0 +1,408 @@
+import { db, dbConfig } from "../backend/database/dbConfig.js"
+import { readFile } from "node:fs/promises"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const DEFAULT_USERS_FILE = resolve(__dirname, "../../data/defaultUsers.json")
+
+const normalizeUserPayload = (user) => {
+  if (!user || typeof user !== "object") {
+    return null
+  }
+
+  const email = typeof user.email === "string" ? user.email.trim().toLowerCase() : ""
+  const name = typeof user.name === "string" ? user.name.trim() : ""
+  const level = Number.isInteger(Number(user.level)) && Number(user.level) > 0
+    ? Number(user.level)
+    : 1
+
+  if (!email || !name) {
+    return null
+  }
+
+  return {
+    email,
+    name,
+    currentLevel: level,
+    isBlocked: Boolean(user.isBlocked ?? false),
+    score: Number.isFinite(Number(user.score)) ? Number(user.score) : 0,
+    completedLevels: Array.isArray(user.completedLevels) ? user.completedLevels : [],
+    createdAt: new Date(),
+    lastActive: new Date()
+  }
+}
+
+const importUsers = async (inputUsers) => {
+  if (!Array.isArray(inputUsers) || inputUsers.length === 0) {
+    return {
+      created: 0,
+      skippedInvalid: 0,
+      skippedDuplicate: 0,
+      createdIds: []
+    }
+  }
+
+  let created = 0
+  let skippedInvalid = 0
+  let skippedDuplicate = 0
+  const createdIds = []
+
+  for (const rawUser of inputUsers) {
+    const user = normalizeUserPayload(rawUser)
+
+    if (!user) {
+      skippedInvalid += 1
+      continue
+    }
+
+    const existing = await db
+      .collection(dbConfig.COLLECTIONS.USERS)
+      .where("email", "==", user.email)
+      .limit(1)
+      .get()
+
+    if (!existing.empty) {
+      skippedDuplicate += 1
+      continue
+    }
+
+    const docRef = await db.collection(dbConfig.COLLECTIONS.USERS).add(user)
+    createdIds.push(docRef.id)
+    created += 1
+  }
+
+  return {
+    created,
+    skippedInvalid,
+    skippedDuplicate,
+    createdIds
+  }
+}
+
+// ✅ ADD USER (CREATE NEW USER)
+export const addUser = async (req, res) => {
+  try {
+    const { email, name, level = 1 } = req.body
+
+    // Validation
+    if (!email || !name) {
+      return res.status(400).json({ error: "Email and name are required" })
+    }
+
+    // Check if user already exists
+    const existingUser = await db.collection(dbConfig.COLLECTIONS.USERS)
+      .where("email", "==", email)
+      .limit(1)
+      .get()
+
+    if (!existingUser.empty) {
+      return res.status(409).json({ error: "User with this email already exists" })
+    }
+
+    // Create new user document
+    const newUser = {
+      email,
+      name,
+      currentLevel: level,
+      isBlocked: false,
+      score: 0,
+      completedLevels: [],
+      createdAt: new Date(),
+      lastActive: new Date()
+    }
+
+    const docRef = await db.collection(dbConfig.COLLECTIONS.USERS).add(newUser)
+
+    res.status(201).json({
+      message: "User created successfully",
+      userId: docRef.id,
+      user: { id: docRef.id, ...newUser }
+    })
+  } catch (error) {
+    console.error("Error adding user:", error)
+    res.status(500).json({ error: "Failed to add user" })
+  }
+}
+
+// ✅ GET USERS
+export const getUsers = async (req, res) => {
+  try {
+    const snapshot = await db.collection("users").get()
+
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+
+    res.json(users)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: "Failed to fetch users" })
+  }
+}
+
+// ✅ BLOCK USER
+export const blockUser = async (req, res) => {
+  try {
+    const { userId, isBlocked = true } = req.body
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" })
+    }
+
+    await db.collection("users").doc(userId).update({
+      isBlocked: Boolean(isBlocked)
+    })
+
+    res.json({ message: isBlocked ? "User blocked" : "User unblocked" })
+  } catch (error) {
+    res.status(500).json({ error: "Failed to block user" })
+  }
+}
+
+// ✅ UPDATE LEVEL
+export const updateLevel = async (req, res) => {
+  try {
+    const { userId, level } = req.body
+
+    await db.collection("users").doc(userId).update({
+      currentLevel: level
+    })
+
+    res.json({ message: "Level updated" })
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update level" })
+  }
+}
+
+// ✅ BULK ADD USERS FROM JSON BODY
+export const bulkAddUsers = async (req, res) => {
+  try {
+    const users = Array.isArray(req.body) ? req.body : req.body?.users
+
+    if (!Array.isArray(users)) {
+      return res.status(400).json({
+        error: "Invalid payload. Send an array of users or { users: [...] }"
+      })
+    }
+
+    const result = await importUsers(users)
+
+    res.status(201).json({
+      message: "Bulk user import completed",
+      ...result
+    })
+  } catch (error) {
+    console.error("Error importing users in bulk:", error)
+    res.status(500).json({ error: "Failed to import users" })
+  }
+}
+
+// ✅ SEED DEFAULT USERS FROM data/defaultUsers.json
+export const seedUsersFromFile = async (req, res) => {
+  try {
+    const rawJson = await readFile(DEFAULT_USERS_FILE, "utf8")
+    const parsed = JSON.parse(rawJson)
+    const users = Array.isArray(parsed) ? parsed : parsed?.users
+
+    if (!Array.isArray(users)) {
+      return res.status(400).json({
+        error: "defaultUsers.json must contain an array or { users: [...] }"
+      })
+    }
+
+    const result = await importUsers(users)
+
+    res.status(201).json({
+      message: "Default users seeded successfully",
+      file: "data/defaultUsers.json",
+      ...result
+    })
+  } catch (error) {
+    console.error("Error seeding users from file:", error)
+    res.status(500).json({ error: "Failed to seed users from file" })
+  }
+}
+
+// ✅ DELETE SINGLE USER
+export const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" })
+    }
+
+    await db.collection(dbConfig.COLLECTIONS.USERS).doc(userId).delete()
+
+    res.json({ message: "User deleted successfully", userId })
+  } catch (error) {
+    console.error("Error deleting user:", error)
+    res.status(500).json({ error: "Failed to delete user" })
+  }
+}
+
+// ✅ DELETE ALL USERS
+export const deleteAllUsers = async (req, res) => {
+  try {
+    const snapshot = await db.collection(dbConfig.COLLECTIONS.USERS).get()
+
+    if (snapshot.empty) {
+      return res.json({ message: "No users found to delete", deleted: 0 })
+    }
+
+    const batch = db.batch()
+
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref)
+    })
+
+    await batch.commit()
+
+    res.json({
+      message: "All users deleted successfully",
+      deleted: snapshot.size
+    })
+  } catch (error) {
+    console.error("Error deleting all users:", error)
+    res.status(500).json({ error: "Failed to delete all users" })
+  }
+}
+
+// ✅ GET QUESTIONS
+export const getQuestions = async (req, res) => {
+  try {
+    const snapshot = await db.collection(dbConfig.COLLECTIONS.QUESTIONS).get()
+
+    const questions = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+
+    res.json(questions)
+  } catch (error) {
+    console.error("Error fetching questions:", error)
+    res.status(500).json({ error: "Failed to fetch questions" })
+  }
+}
+
+// ✅ ADD QUESTION
+export const addQuestion = async (req, res) => {
+  try {
+    const {
+      level,
+      title,
+      riddleText = "",
+      problemStatement = "",
+      correctAnswer,
+      difficulty = "Medium"
+    } = req.body
+
+    const parsedLevel = Number(level)
+
+    if (!Number.isInteger(parsedLevel) || parsedLevel < 1) {
+      return res.status(400).json({ error: "Level must be a positive integer" })
+    }
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: "Title is required" })
+    }
+
+    if (!correctAnswer || !String(correctAnswer).trim()) {
+      return res.status(400).json({ error: "Correct answer is required" })
+    }
+
+    const question = {
+      level: parsedLevel,
+      title: String(title).trim(),
+      riddleText: String(riddleText || "").trim(),
+      problemStatement: String(problemStatement || "").trim(),
+      correctAnswer: String(correctAnswer).trim(),
+      difficulty: ["Easy", "Medium", "Hard"].includes(difficulty) ? difficulty : "Medium",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+
+    const docRef = await db.collection(dbConfig.COLLECTIONS.QUESTIONS).add(question)
+
+    res.status(201).json({
+      message: "Question added successfully",
+      question: {
+        id: docRef.id,
+        ...question
+      }
+    })
+  } catch (error) {
+    console.error("Error adding question:", error)
+    res.status(500).json({ error: "Failed to add question" })
+  }
+}
+
+// ✅ UPDATE QUESTION
+export const updateQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.params
+    const {
+      level,
+      title,
+      riddleText = "",
+      problemStatement = "",
+      correctAnswer,
+      difficulty = "Medium"
+    } = req.body
+
+    if (!questionId) {
+      return res.status(400).json({ error: "questionId is required" })
+    }
+
+    const parsedLevel = Number(level)
+    if (!Number.isInteger(parsedLevel) || parsedLevel < 1) {
+      return res.status(400).json({ error: "Level must be a positive integer" })
+    }
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: "Title is required" })
+    }
+
+    if (!correctAnswer || !String(correctAnswer).trim()) {
+      return res.status(400).json({ error: "Correct answer is required" })
+    }
+
+    const updates = {
+      level: parsedLevel,
+      title: String(title).trim(),
+      riddleText: String(riddleText || "").trim(),
+      problemStatement: String(problemStatement || "").trim(),
+      correctAnswer: String(correctAnswer).trim(),
+      difficulty: ["Easy", "Medium", "Hard"].includes(difficulty) ? difficulty : "Medium",
+      updatedAt: new Date()
+    }
+
+    await db.collection(dbConfig.COLLECTIONS.QUESTIONS).doc(questionId).update(updates)
+
+    res.json({ message: "Question updated successfully", questionId })
+  } catch (error) {
+    console.error("Error updating question:", error)
+    res.status(500).json({ error: "Failed to update question" })
+  }
+}
+
+// ✅ DELETE QUESTION
+export const deleteQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.params
+
+    if (!questionId) {
+      return res.status(400).json({ error: "questionId is required" })
+    }
+
+    await db.collection(dbConfig.COLLECTIONS.QUESTIONS).doc(questionId).delete()
+
+    res.json({ message: "Question deleted successfully", questionId })
+  } catch (error) {
+    console.error("Error deleting question:", error)
+    res.status(500).json({ error: "Failed to delete question" })
+  }
+}

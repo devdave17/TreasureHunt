@@ -13,6 +13,44 @@ The React Compiler is enabled on this template. See [this documentation](https:/
 
 Note: This will impact Vite dev & build performances.
 
+## Admin Panel Security
+
+Admin APIs are protected by a token middleware. Route name alone is not security.
+
+1. Copy `.env.example` to `.env`
+2. Set values for `ADMIN_API_TOKEN`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD`
+3. Start backend: `node server.js`
+4. Start frontend: `npm run dev`
+5. Open admin UI at `/admin.html`
+6. Login with `ADMIN_USERNAME` and `ADMIN_PASSWORD`
+
+Without a valid token, `/admin/*` APIs return `401 Unauthorized`.
+
+## Bulk Insert Users
+
+You can insert multiple users in one request.
+
+### 1) JSON Body Bulk Import
+
+POST `/admin/users/bulk`
+
+Payload example:
+
+```json
+{
+	"users": [
+		{ "email": "a@example.com", "name": "A", "level": 1 },
+		{ "email": "b@example.com", "name": "B", "level": 2 }
+	]
+}
+```
+
+### 2) Seed From File
+
+POST `/admin/users/seed`
+
+This imports users from `data/defaultUsers.json`.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

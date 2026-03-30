@@ -1,0 +1,18 @@
+[
+  {
+    "email": "player1@treasurehunt.dev",
+    "name": "Player One",
+    "level": 1
+  },
+  {
+    "email": "player2@treasurehunt.dev",
+    "name": "Player Two",
+    "level": 2
+  },
+  {
+    "email": "player3@treasurehunt.dev",
+    "name": "Player Three",
+    "level": 3,
+    "score": 120
+  }
+]
