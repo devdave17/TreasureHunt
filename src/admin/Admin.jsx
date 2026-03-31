@@ -4,10 +4,14 @@ import AdminLayout from "./components/AdminLayout"
 import { api } from "./api"
 
 const TOKEN_STORAGE_KEY = "treasurehunt_admin_token"
+const ROLE_STORAGE_KEY = "treasurehunt_admin_role"
 
 function Admin() {
   const [authToken, setAuthToken] = useState(
     () => window.localStorage.getItem(TOKEN_STORAGE_KEY) || ""
+  )
+  const [role, setRole] = useState(
+    () => window.localStorage.getItem(ROLE_STORAGE_KEY) || ""
   )
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -32,7 +36,9 @@ function Admin() {
       const data = await api.login(username.trim(), password)
       
       window.localStorage.setItem(TOKEN_STORAGE_KEY, data.token)
+      window.localStorage.setItem(ROLE_STORAGE_KEY, data.role || "admin")
       setAuthToken(data.token)
+      setRole(data.role || "admin")
       setPassword("")
       setSuccessMessage("Login successful")
     } catch (err) {
@@ -44,7 +50,9 @@ function Admin() {
 
   const handleLogout = () => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+    window.localStorage.removeItem(ROLE_STORAGE_KEY)
     setAuthToken("")
+    setRole("")
     setPassword("")
     setUsername("")
     setError("")
@@ -113,7 +121,7 @@ function Admin() {
     )
   }
 
-  return <AdminLayout authToken={authToken} onLogout={handleLogout} />
+  return <AdminLayout authToken={authToken} role={role || "admin"} onLogout={handleLogout} />
 }
 
 export default Admin

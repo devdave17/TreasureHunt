@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react"
 import PropTypes from "prop-types"
 import { api } from "../api.js"
 
-function Dashboard({ authToken }) {
+function Dashboard({ authToken, role }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -12,7 +12,7 @@ function Dashboard({ authToken }) {
       try {
         setLoading(true)
         setError("")
-        const userData = await api.getUsers(authToken)
+        const userData = await api.getUsers(authToken, role)
         setUsers(Array.isArray(userData) ? userData : [])
       } catch (err) {
         setError(err.message)
@@ -24,7 +24,7 @@ function Dashboard({ authToken }) {
     if (authToken) {
       fetchData()
     }
-  }, [authToken])
+  }, [authToken, role])
 
   const stats = useMemo(() => {
     const activeUsers = users.filter((u) => !u.isBlocked).length
@@ -97,7 +97,8 @@ function Dashboard({ authToken }) {
 }
 
 Dashboard.propTypes = {
-  authToken: PropTypes.string.isRequired
+  authToken: PropTypes.string.isRequired,
+  role: PropTypes.oneOf(["admin", "invigilator"]).isRequired
 }
 
 export default Dashboard

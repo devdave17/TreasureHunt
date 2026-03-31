@@ -3,12 +3,24 @@ import PropTypes from "prop-types"
 import { api } from "../api.js"
 
 function Questions({ authToken }) {
+  const [quests, setQuests] = useState([])
+  const [selectedQuestId, setSelectedQuestId] = useState("")
   const [questions, setQuestions] = useState([])
+
   const [loading, setLoading] = useState(false)
+  const [questLoading, setQuestLoading] = useState(false)
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
+
   const [editingId, setEditingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [creatingQuest, setCreatingQuest] = useState(false)
+
+  const [questForm, setQuestForm] = useState({
+    name: "",
+    code: "",
+    description: ""
+  })
 
   const [formData, setFormData] = useState({
     level: "",
@@ -21,15 +33,41 @@ function Questions({ authToken }) {
 
   useEffect(() => {
     if (authToken) {
-      fetchQuestions()
+      initializeData()
     }
   }, [authToken])
 
-  const fetchQuestions = async () => {
+  useEffect(() => {
+    if (authToken && selectedQuestId) {
+      fetchQuestions(selectedQuestId)
+    } else {
+      setQuestions([])
+    }
+  }, [authToken, selectedQuestId])
+
+  const initializeData = async () => {
+    try {
+      setQuestLoading(true)
+      setError("")
+      const data = await api.getQuests(authToken)
+      const questList = Array.isArray(data) ? data : []
+      setQuests(questList)
+
+      if (questList.length > 0) {
+        setSelectedQuestId(questList[0].id)
+      }
+    } catch (err) {
+      setError(err.message || "Failed to load quests")
+    } finally {
+      setQuestLoading(false)
+    }
+  }
+
+  const fetchQuestions = async (questId) => {
     try {
       setLoading(true)
       setError("")
-      const data = await api.getQuestions(authToken)
+      const data = await api.getQuestions(authToken, questId)
       setQuestions(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err.message || "Failed to load questions")
@@ -38,46 +76,95 @@ function Questions({ authToken }) {
     }
   }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
+  const handleQuestFormChange = (event) => {
+    const { name, value } = event.target
+    setQuestForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleCreateQuest = async (event) => {
+    event.preventDefault()
+    const payload = {
+      name: questForm.name.trim(),
+      code: questForm.code.trim().toUpperCase(),
+      description: questForm.description.trim()
+    }
+
+    if (!payload.name) {
+      setError("Quest name is required")
+      return
+    }
+
+    setCreatingQuest(true)
+    setError("")
+    setSuccessMessage("")
+
+    try {
+      const created = await api.addQuest(payload, authToken)
+      setQuests((prev) => {
+        const next = [...prev, created]
+        next.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
+        return next
+      })
+      setSelectedQuestId(created.id)
+      setQuestForm({ name: "", code: "", description: "" })
+      setSuccessMessage("Quest created successfully")
+    } catch (err) {
+      setError(err.message || "Failed to create quest")
+    } finally {
+      setCreatingQuest(false)
+    }
+  }
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setError("")
     setSuccessMessage("")
+
+    if (!selectedQuestId) {
+      setError("Select a quest first")
+      return
+    }
 
     if (!formData.level || !formData.title || !formData.correctAnswer) {
       setError("Level, Title, and Correct Answer are required")
       return
     }
 
+    const payload = {
+      ...formData,
+      questId: selectedQuestId
+    }
+
     try {
       setLoading(true)
 
       if (editingId) {
-        await api.updateQuestion(editingId, formData, authToken)
-        setQuestions((prev) =>
-          prev.map((q) => (q.id === editingId ? { ...q, ...formData } : q))
-        )
+        await api.updateQuestion(editingId, payload, authToken)
         setSuccessMessage("Question updated successfully")
       } else {
-        const newQuestion = await api.addQuestion(formData, authToken)
-        setQuestions((prev) => [...prev, newQuestion])
+        await api.addQuestion(payload, authToken)
         setSuccessMessage("Question added successfully")
       }
 
       resetForm()
-      fetchQuestions()
+      await fetchQuestions(selectedQuestId)
     } catch (err) {
-      setError(err.message)
+      setError(err.message || "Failed to save question")
     } finally {
       setLoading(false)
     }
   }
 
   const handleEdit = (question) => {
+    if (question.questId) {
+      setSelectedQuestId(question.questId)
+    }
+
     setEditingId(question.id)
     setFormData({
       level: question.level || "",
@@ -103,7 +190,7 @@ function Questions({ authToken }) {
       setQuestions((prev) => prev.filter((q) => q.id !== questionId))
       setSuccessMessage("Question deleted successfully")
     } catch (err) {
-      setError(err.message)
+      setError(err.message || "Failed to delete question")
     } finally {
       setDeletingId(null)
     }
@@ -121,13 +208,15 @@ function Questions({ authToken }) {
     setEditingId(null)
   }
 
+  const selectedQuest = quests.find((quest) => quest.id === selectedQuestId) || null
+
   return (
     <div className="module-container">
       <div className="module-header">
-        <h2>Question Management</h2>
+        <h2>Quest Question Management</h2>
         {editingId && (
           <button className="btn btn-secondary" onClick={resetForm} type="button">
-            ✕ Cancel Edit
+            Cancel Edit
           </button>
         )}
       </div>
@@ -135,110 +224,201 @@ function Questions({ authToken }) {
       {error && <div className="state-box error">{error}</div>}
       {successMessage && <div className="state-box success">{successMessage}</div>}
 
-      {/* Question Form */}
-      <div className="form-section">
-        <h3>{editingId ? "Edit Question" : "Add New Question"}</h3>
-
-        <form onSubmit={handleSubmit} className="question-form">
+      <section className="form-section">
+        <h3>Create New Quest</h3>
+        <form className="question-form" onSubmit={handleCreateQuest}>
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="level">Level *</label>
+              <label htmlFor="quest-name">Quest Name *</label>
               <input
-                id="level"
-                type="number"
-                name="level"
-                min="1"
-                value={formData.level}
-                onChange={handleInputChange}
-                placeholder="e.g., 1"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="title">Title *</label>
-              <input
-                id="title"
+                id="quest-name"
                 type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                placeholder="Question title"
+                name="name"
+                value={questForm.name}
+                onChange={handleQuestFormChange}
+                placeholder="e.g. Beginner Treasure Trail"
                 required
               />
             </div>
-
             <div className="form-group">
-              <label htmlFor="difficulty">Difficulty</label>
-              <select
-                id="difficulty"
-                name="difficulty"
-                value={formData.difficulty}
-                onChange={handleInputChange}
-              >
-                <option>Easy</option>
-                <option>Medium</option>
-                <option>Hard</option>
-              </select>
+              <label htmlFor="quest-code">Quest Code</label>
+              <input
+                id="quest-code"
+                type="text"
+                name="code"
+                value={questForm.code}
+                onChange={handleQuestFormChange}
+                placeholder="e.g. QUEST-01"
+              />
             </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="riddleText">Riddle Text</label>
+            <label htmlFor="quest-description">Description</label>
             <textarea
-              id="riddleText"
-              name="riddleText"
-              value={formData.riddleText}
-              onChange={handleInputChange}
-              placeholder="Enter riddle text if applicable"
-              rows="3"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="problemStatement">Problem Statement</label>
-            <textarea
-              id="problemStatement"
-              name="problemStatement"
-              value={formData.problemStatement}
-              onChange={handleInputChange}
-              placeholder="Enter problem statement"
-              rows="3"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="correctAnswer">Correct Answer *</label>
-            <input
-              id="correctAnswer"
-              type="text"
-              name="correctAnswer"
-              value={formData.correctAnswer}
-              onChange={handleInputChange}
-              placeholder="Correct answer (hidden from users)"
-              required
+              id="quest-description"
+              name="description"
+              rows="2"
+              value={questForm.description}
+              onChange={handleQuestFormChange}
+              placeholder="Short description for admins"
             />
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? "Saving..." : editingId ? "Update Question" : "Add Question"}
+            <button className="btn btn-primary" type="submit" disabled={creatingQuest}>
+              {creatingQuest ? "Creating..." : "Create Quest"}
             </button>
-            {editingId && (
-              <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                Cancel
-              </button>
-            )}
           </div>
         </form>
-      </div>
+      </section>
 
-      {/* Questions List */}
-      <div className="list-section">
-        <h3>All Questions ({questions.length})</h3>
+      <section className="form-section">
+        <h3>Select Quest</h3>
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="quest-selector">Active Quest *</label>
+            <select
+              id="quest-selector"
+              value={selectedQuestId}
+              onChange={(event) => setSelectedQuestId(event.target.value)}
+              disabled={questLoading || quests.length === 0}
+            >
+              {quests.length === 0 ? (
+                <option value="">No quests found</option>
+              ) : (
+                quests.map((quest) => (
+                  <option key={quest.id} value={quest.id}>
+                    {quest.name}{quest.code ? ` (${quest.code})` : ""}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+      </section>
 
-        {questions.length === 0 ? (
-          <div className="state-box">No questions yet. Add one to get started!</div>
+      <section className="form-section">
+        <h3>{editingId ? "Edit Question" : "Add Question To Selected Quest"}</h3>
+
+        {!selectedQuest ? (
+          <div className="state-box">Please create/select a quest before adding questions.</div>
+        ) : (
+          <>
+            <div className="state-box">
+              Selected Quest: <strong>{selectedQuest.name}</strong>
+              {selectedQuest.code ? ` (${selectedQuest.code})` : ""}
+            </div>
+
+            <form onSubmit={handleSubmit} className="question-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="level">Level *</label>
+                  <input
+                    id="level"
+                    type="number"
+                    name="level"
+                    min="1"
+                    value={formData.level}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 1"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="title">Title *</label>
+                  <input
+                    id="title"
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="Question title"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="difficulty">Difficulty</label>
+                  <select
+                    id="difficulty"
+                    name="difficulty"
+                    value={formData.difficulty}
+                    onChange={handleInputChange}
+                  >
+                    <option>Easy</option>
+                    <option>Medium</option>
+                    <option>Hard</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="riddleText">Riddle Text</label>
+                <textarea
+                  id="riddleText"
+                  name="riddleText"
+                  value={formData.riddleText}
+                  onChange={handleInputChange}
+                  placeholder="Enter riddle text"
+                  rows="3"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="problemStatement">Problem Statement</label>
+                <textarea
+                  id="problemStatement"
+                  name="problemStatement"
+                  value={formData.problemStatement}
+                  onChange={handleInputChange}
+                  placeholder="Enter problem statement"
+                  rows="3"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="correctAnswer">Correct Answer *</label>
+                <input
+                  id="correctAnswer"
+                  type="text"
+                  name="correctAnswer"
+                  value={formData.correctAnswer}
+                  onChange={handleInputChange}
+                  placeholder="Correct answer"
+                  required
+                />
+              </div>
+
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? "Saving..." : editingId ? "Update Question" : "Add Question"}
+                </button>
+                {editingId && (
+                  <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </>
+        )}
+      </section>
+
+      <section className="list-section">
+        <h3>
+          {selectedQuest
+            ? `Questions in ${selectedQuest.name} (${questions.length})`
+            : "Questions (Select a quest)"}
+        </h3>
+
+        {!selectedQuest ? (
+          <div className="state-box">Select a quest to view questions.</div>
+        ) : loading ? (
+          <div className="state-box">Loading questions...</div>
+        ) : questions.length === 0 ? (
+          <div className="state-box">No questions in this quest yet.</div>
         ) : (
           <div className="questions-list">
             {questions.map((question) => (
@@ -260,7 +440,7 @@ function Questions({ authToken }) {
                       disabled={deletingId === question.id}
                       type="button"
                     >
-                      ✏️ Edit
+                      Edit
                     </button>
                     <button
                       className="btn btn-danger"
@@ -268,7 +448,7 @@ function Questions({ authToken }) {
                       disabled={deletingId === question.id}
                       type="button"
                     >
-                      {deletingId === question.id ? "..." : "🗑️ Delete"}
+                      {deletingId === question.id ? "Deleting..." : "Delete"}
                     </button>
                   </div>
                 </div>
@@ -286,13 +466,13 @@ function Questions({ authToken }) {
                 )}
 
                 <div className="question-detail answer-field">
-                  <strong>✓ Answer:</strong> <span className="answer-text">{question.correctAnswer}</span>
+                  <strong>Answer:</strong> <span className="answer-text">{question.correctAnswer}</span>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

@@ -271,10 +271,154 @@ export const deleteAllUsers = async (req, res) => {
   }
 }
 
+// ✅ GET QUESTS
+export const getQuests = async (req, res) => {
+  try {
+    const snapshot = await db.collection(dbConfig.COLLECTIONS.QUESTS).get()
+    const quests = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+
+    quests.sort((a, b) => {
+      const aName = String(a.name || "").toLowerCase()
+      const bName = String(b.name || "").toLowerCase()
+      return aName.localeCompare(bName)
+    })
+
+    res.json(quests)
+  } catch (error) {
+    console.error("Error fetching quests:", error)
+    res.status(500).json({ error: "Failed to fetch quests" })
+  }
+}
+
+// ✅ ADD QUEST
+export const addQuest = async (req, res) => {
+  try {
+    const { name, code = "", description = "", isActive = true } = req.body
+
+    const questName = String(name || "").trim()
+    const questCode = String(code || "").trim().toUpperCase()
+
+    if (!questName) {
+      return res.status(400).json({ error: "Quest name is required" })
+    }
+
+    if (questCode) {
+      const existing = await db
+        .collection(dbConfig.COLLECTIONS.QUESTS)
+        .where("code", "==", questCode)
+        .limit(1)
+        .get()
+
+      if (!existing.empty) {
+        return res.status(409).json({ error: "Quest code already exists" })
+      }
+    }
+
+    const quest = {
+      name: questName,
+      code: questCode,
+      description: String(description || "").trim(),
+      isActive: Boolean(isActive),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+
+    const docRef = await db.collection(dbConfig.COLLECTIONS.QUESTS).add(quest)
+    res.status(201).json({
+      message: "Quest created successfully",
+      quest: { id: docRef.id, ...quest }
+    })
+  } catch (error) {
+    console.error("Error adding quest:", error)
+    res.status(500).json({ error: "Failed to add quest" })
+  }
+}
+
+// ✅ UPDATE QUEST
+export const updateQuest = async (req, res) => {
+  try {
+    const { questId } = req.params
+    const { name, code = "", description = "", isActive = true } = req.body
+
+    if (!questId) {
+      return res.status(400).json({ error: "questId is required" })
+    }
+
+    const questName = String(name || "").trim()
+    const questCode = String(code || "").trim().toUpperCase()
+
+    if (!questName) {
+      return res.status(400).json({ error: "Quest name is required" })
+    }
+
+    if (questCode) {
+      const existing = await db
+        .collection(dbConfig.COLLECTIONS.QUESTS)
+        .where("code", "==", questCode)
+        .limit(1)
+        .get()
+
+      const duplicate = existing.docs.find((doc) => doc.id !== questId)
+      if (duplicate) {
+        return res.status(409).json({ error: "Quest code already exists" })
+      }
+    }
+
+    await db.collection(dbConfig.COLLECTIONS.QUESTS).doc(questId).update({
+      name: questName,
+      code: questCode,
+      description: String(description || "").trim(),
+      isActive: Boolean(isActive),
+      updatedAt: new Date()
+    })
+
+    res.json({ message: "Quest updated successfully", questId })
+  } catch (error) {
+    console.error("Error updating quest:", error)
+    res.status(500).json({ error: "Failed to update quest" })
+  }
+}
+
+// ✅ DELETE QUEST
+export const deleteQuest = async (req, res) => {
+  try {
+    const { questId } = req.params
+
+    if (!questId) {
+      return res.status(400).json({ error: "questId is required" })
+    }
+
+    const questionsSnapshot = await db
+      .collection(dbConfig.COLLECTIONS.QUESTIONS)
+      .where("questId", "==", questId)
+      .limit(1)
+      .get()
+
+    if (!questionsSnapshot.empty) {
+      return res.status(409).json({
+        error: "Cannot delete quest with existing questions. Remove questions first."
+      })
+    }
+
+    await db.collection(dbConfig.COLLECTIONS.QUESTS).doc(questId).delete()
+    res.json({ message: "Quest deleted successfully", questId })
+  } catch (error) {
+    console.error("Error deleting quest:", error)
+    res.status(500).json({ error: "Failed to delete quest" })
+  }
+}
+
 // ✅ GET QUESTIONS
 export const getQuestions = async (req, res) => {
   try {
-    const snapshot = await db.collection(dbConfig.COLLECTIONS.QUESTIONS).get()
+    const { questId } = req.query
+
+    let query = db.collection(dbConfig.COLLECTIONS.QUESTIONS)
+    if (questId) {
+      query = query.where("questId", "==", questId)
+    }
+
+    const snapshot = await query.get()
 
     const questions = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -292,6 +436,7 @@ export const getQuestions = async (req, res) => {
 export const addQuestion = async (req, res) => {
   try {
     const {
+      questId,
       level,
       title,
       riddleText = "",
@@ -299,6 +444,15 @@ export const addQuestion = async (req, res) => {
       correctAnswer,
       difficulty = "Medium"
     } = req.body
+
+    if (!questId || !String(questId).trim()) {
+      return res.status(400).json({ error: "questId is required" })
+    }
+
+    const questDoc = await db.collection(dbConfig.COLLECTIONS.QUESTS).doc(String(questId)).get()
+    if (!questDoc.exists) {
+      return res.status(404).json({ error: "Selected quest not found" })
+    }
 
     const parsedLevel = Number(level)
 
@@ -315,6 +469,8 @@ export const addQuestion = async (req, res) => {
     }
 
     const question = {
+      questId: String(questId),
+      questName: String(questDoc.data()?.name || ""),
       level: parsedLevel,
       title: String(title).trim(),
       riddleText: String(riddleText || "").trim(),
@@ -345,6 +501,7 @@ export const updateQuestion = async (req, res) => {
   try {
     const { questionId } = req.params
     const {
+      questId,
       level,
       title,
       riddleText = "",
@@ -355,6 +512,15 @@ export const updateQuestion = async (req, res) => {
 
     if (!questionId) {
       return res.status(400).json({ error: "questionId is required" })
+    }
+
+    if (!questId || !String(questId).trim()) {
+      return res.status(400).json({ error: "questId is required" })
+    }
+
+    const questDoc = await db.collection(dbConfig.COLLECTIONS.QUESTS).doc(String(questId)).get()
+    if (!questDoc.exists) {
+      return res.status(404).json({ error: "Selected quest not found" })
     }
 
     const parsedLevel = Number(level)
@@ -371,6 +537,8 @@ export const updateQuestion = async (req, res) => {
     }
 
     const updates = {
+      questId: String(questId),
+      questName: String(questDoc.data()?.name || ""),
       level: parsedLevel,
       title: String(title).trim(),
       riddleText: String(riddleText || "").trim(),

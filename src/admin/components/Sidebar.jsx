@@ -1,12 +1,17 @@
 import PropTypes from "prop-types"
 
-function Sidebar({ activeTab, onTabChange, onLogout }) {
-  const tabs = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "users", label: "Users", icon: "👥" },
-    { id: "questions", label: "Questions", icon: "❓" },
-    { id: "stats", label: "Stats", icon: "📈" }
-  ]
+function Sidebar({ activeTab, onTabChange, onLogout, role }) {
+  const tabs = role === "invigilator"
+    ? [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "users", label: "Users", icon: "👥" }
+      ]
+    : [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "users", label: "Users", icon: "👥" },
+        { id: "questions", label: "Questions", icon: "❓" },
+        { id: "stats", label: "Stats", icon: "📈" }
+      ]
 
   return (
     <aside className="admin-sidebar">
@@ -41,7 +46,8 @@ function Sidebar({ activeTab, onTabChange, onLogout }) {
 Sidebar.propTypes = {
   activeTab: PropTypes.string.isRequired,
   onTabChange: PropTypes.func.isRequired,
-  onLogout: PropTypes.func.isRequired
+  onLogout: PropTypes.func.isRequired,
+  role: PropTypes.oneOf(["admin", "invigilator"]).isRequired
 }
 
 export default Sidebar

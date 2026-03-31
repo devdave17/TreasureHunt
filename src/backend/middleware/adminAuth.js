@@ -9,6 +9,17 @@ const getTokenFromHeaders = (req) => {
   return bearerToken || adminTokenHeader
 }
 
+const getRoleFromHeaders = (req) => {
+  const roleHeader = req.headers["x-admin-role"] || req.headers["x-user-role"] || ""
+  const normalizedRole = String(roleHeader).trim().toLowerCase()
+
+  if (normalizedRole === "admin" || normalizedRole === "invigilator") {
+    return normalizedRole
+  }
+
+  return "admin"
+}
+
 export const adminAuth = (req, res, next) => {
   const expectedToken = process.env.ADMIN_API_TOKEN
 
@@ -23,6 +34,21 @@ export const adminAuth = (req, res, next) => {
 
   if (!receivedToken || receivedToken !== expectedToken) {
     return res.status(401).json({ error: "Unauthorized admin request" })
+  }
+
+  req.adminRole = getRoleFromHeaders(req)
+
+  next()
+}
+
+export const requireRoles = (allowedRoles = []) => (req, res, next) => {
+  const role = req.adminRole || "admin"
+
+  if (!allowedRoles.includes(role)) {
+    return res.status(403).json({
+      error: "Forbidden",
+      details: `Role '${role}' is not allowed for this action`
+    })
   }
 
   next()

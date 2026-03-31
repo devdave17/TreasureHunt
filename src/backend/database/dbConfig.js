@@ -17,6 +17,7 @@ export const dbConfig = {
   // Collections
   COLLECTIONS: {
     USERS: "users",
+    QUESTS: "quests",
     LEVELS: "levels",
     SCOREBOARD: "scoreboard",
     CLUES: "clues",

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react"
 import PropTypes from "prop-types"
 import { api } from "../api.js"
 
-function Users({ authToken }) {
+function Users({ authToken, role }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -23,11 +23,14 @@ function Users({ authToken }) {
   const [sortColumn, setSortColumn] = useState("email")
   const [sortDirection, setSortDirection] = useState("asc")
 
+  const canManageUsers = role === "admin"
+  const canBlockUsers = role === "admin" || role === "invigilator"
+
   const fetchUsers = async () => {
     try {
       setLoading(true)
       setError("")
-      const data = await api.getUsers(authToken)
+      const data = await api.getUsers(authToken, role)
       setUsers(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err.message || "Failed to load users")
@@ -40,7 +43,7 @@ function Users({ authToken }) {
     if (authToken) {
       fetchUsers()
     }
-  }, [authToken])
+  }, [authToken, role])
 
   const handleSort = (column) => {
     if (sortColumn === column) {
@@ -96,7 +99,7 @@ function Users({ authToken }) {
     setSuccessMessage("")
 
     try {
-      await api.blockUser(userId, shouldBlock, authToken)
+      await api.blockUser(userId, shouldBlock, authToken, role)
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, isBlocked: shouldBlock } : u))
       )
@@ -123,7 +126,7 @@ function Users({ authToken }) {
     setSuccessMessage("")
 
     try {
-      await api.updateUserLevel(userId, parsedLevel, authToken)
+      await api.updateUserLevel(userId, parsedLevel, authToken, role)
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, currentLevel: parsedLevel } : u))
       )
@@ -145,7 +148,7 @@ function Users({ authToken }) {
     setSuccessMessage("")
 
     try {
-      await api.deleteUser(userId, authToken)
+      await api.deleteUser(userId, authToken, role)
       setUsers((prev) => prev.filter((u) => u.id !== userId))
       setSuccessMessage("User deleted successfully")
     } catch (err) {
@@ -180,7 +183,7 @@ function Users({ authToken }) {
     setSuccessMessage("")
 
     try {
-      await api.addUser({ email, name, level }, authToken)
+      await api.addUser({ email, name, level }, authToken, role)
       setSuccessMessage("User added successfully")
       setNewUserForm({ email: "", name: "", level: 1 })
       await fetchUsers()
@@ -211,7 +214,7 @@ function Users({ authToken }) {
     setSuccessMessage("")
 
     try {
-      const data = await api.bulkAddUsers(payloadUsers, authToken)
+      const data = await api.bulkAddUsers(payloadUsers, authToken, role)
       setSuccessMessage(
         `Imported ${data.created ?? 0} users. Skipped ${data.skippedDuplicate ?? 0} duplicate and ${data.skippedInvalid ?? 0} invalid.`
       )
@@ -242,7 +245,7 @@ function Users({ authToken }) {
       setIsImportingUsers(true)
       setError("")
       setSuccessMessage("")
-      const data = await api.bulkAddUsers(payloadUsers, authToken)
+      const data = await api.bulkAddUsers(payloadUsers, authToken, role)
       setSuccessMessage(
         `Imported ${data.created ?? 0} users. Skipped ${data.skippedDuplicate ?? 0} duplicate and ${data.skippedInvalid ?? 0} invalid.`
       )
@@ -267,7 +270,7 @@ function Users({ authToken }) {
     setSuccessMessage("")
 
     try {
-      const data = await api.deleteAllUsers(authToken)
+      const data = await api.deleteAllUsers(authToken, role)
       setUsers([])
       setLevelInputs({})
       setSuccessMessage(`Deleted ${data.deleted ?? 0} users successfully`)
@@ -286,93 +289,105 @@ function Users({ authToken }) {
           <button className="btn btn-secondary" onClick={fetchUsers} type="button" disabled={loading}>
             🔄 Refresh
           </button>
-          <button
-            className="btn btn-danger"
-            onClick={handleDeleteAllUsers}
-            type="button"
-            disabled={isDeletingAllUsers || users.length === 0}
-          >
-            {isDeletingAllUsers ? "Deleting..." : "Delete All"}
-          </button>
+          {canManageUsers && (
+            <button
+              className="btn btn-danger"
+              onClick={handleDeleteAllUsers}
+              type="button"
+              disabled={isDeletingAllUsers || users.length === 0}
+            >
+              {isDeletingAllUsers ? "Deleting..." : "Delete All"}
+            </button>
+          )}
         </div>
       </div>
 
-      <section className="form-section">
-        <h3>Add Single User</h3>
-        <form className="question-form" onSubmit={handleAddSingleUser}>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="new-user-email">Email</label>
-              <input
-                id="new-user-email"
-                type="email"
-                value={newUserForm.email}
-                onChange={(event) => handleSingleUserInputChange("email", event.target.value)}
-                placeholder="user@example.com"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="new-user-name">Name</label>
-              <input
-                id="new-user-name"
-                type="text"
-                value={newUserForm.name}
-                onChange={(event) => handleSingleUserInputChange("name", event.target.value)}
-                placeholder="User Name"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="new-user-level">Level</label>
-              <input
-                id="new-user-level"
-                type="number"
-                min="1"
-                value={newUserForm.level}
-                onChange={(event) => handleSingleUserInputChange("level", event.target.value)}
-                required
-              />
-            </div>
-          </div>
-          <div className="form-actions">
-            <button className="btn btn-primary" type="submit" disabled={isAddingUser}>
-              {isAddingUser ? "Adding..." : "Add User"}
-            </button>
-          </div>
-        </form>
-      </section>
+      {canManageUsers && (
+        <>
+          <section className="form-section">
+            <h3>Add Single User</h3>
+            <form className="question-form" onSubmit={handleAddSingleUser}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="new-user-email">Email</label>
+                  <input
+                    id="new-user-email"
+                    type="email"
+                    value={newUserForm.email}
+                    onChange={(event) => handleSingleUserInputChange("email", event.target.value)}
+                    placeholder="user@example.com"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="new-user-name">Name</label>
+                  <input
+                    id="new-user-name"
+                    type="text"
+                    value={newUserForm.name}
+                    onChange={(event) => handleSingleUserInputChange("name", event.target.value)}
+                    placeholder="User Name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="new-user-level">Level</label>
+                  <input
+                    id="new-user-level"
+                    type="number"
+                    min="1"
+                    value={newUserForm.level}
+                    onChange={(event) => handleSingleUserInputChange("level", event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button className="btn btn-primary" type="submit" disabled={isAddingUser}>
+                  {isAddingUser ? "Adding..." : "Add User"}
+                </button>
+              </div>
+            </form>
+          </section>
 
-      <section className="import-panel">
-        <div className="import-panel-top">
-          <h2>Bulk Import Users</h2>
-          <div className="import-actions">
-            <label className="btn btn-secondary file-btn" htmlFor="users-json-upload">
-              Upload JSON
-            </label>
-            <input
-              id="users-json-upload"
-              type="file"
-              accept="application/json,.json"
-              onChange={handleJsonFileUpload}
-              hidden
+          <section className="import-panel">
+            <div className="import-panel-top">
+              <h2>Bulk Import Users</h2>
+              <div className="import-actions">
+                <label className="btn btn-secondary file-btn" htmlFor="users-json-upload">
+                  Upload JSON
+                </label>
+                <input
+                  id="users-json-upload"
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={handleJsonFileUpload}
+                  hidden
+                />
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={isImportingUsers}
+                  onClick={handleBulkImport}
+                >
+                  {isImportingUsers ? "Importing..." : "Import JSON"}
+                </button>
+              </div>
+            </div>
+            <textarea
+              className="json-input"
+              value={jsonInput}
+              onChange={(event) => setJsonInput(event.target.value)}
+              placeholder='Paste JSON array or {"users": [...]} here'
             />
-            <button
-              className="btn btn-primary"
-              type="button"
-              disabled={isImportingUsers}
-              onClick={handleBulkImport}
-            >
-              {isImportingUsers ? "Importing..." : "Import JSON"}
-            </button>
-          </div>
+          </section>
+        </>
+      )}
+
+      {!canManageUsers && (
+        <div className="state-box">
+          Invigilator mode: you can monitor users and block/unblock suspicious activity.
         </div>
-        <textarea
-          className="json-input"
-          value={jsonInput}
-          onChange={(event) => setJsonInput(event.target.value)}
-          placeholder='Paste JSON array or {"users": [...]} here'
-        />
-      </section>
+      )}
 
       {error && <div className="state-box error">{error}</div>}
       {successMessage && <div className="state-box success">{successMessage}</div>}
@@ -440,40 +455,44 @@ function Users({ authToken }) {
                           <button
                             className={`btn ${user.isBlocked ? "btn-success" : "btn-danger"}`}
                             onClick={() => handleBlockToggle(user.id, !user.isBlocked)}
-                            disabled={isBusy}
+                            disabled={isBusy || !canBlockUsers}
                             type="button"
                           >
                             {blockingUserId === user.id ? "..." : user.isBlocked ? "Unblock" : "Block"}
                           </button>
 
-                          <input
-                            type="number"
-                            min="1"
-                            className="level-input"
-                            value={levelInputs[user.id] ?? currentLevel}
-                            onChange={(e) =>
-                              setLevelInputs((prev) => ({ ...prev, [user.id]: e.target.value }))
-                            }
-                            disabled={isBusy}
-                          />
+                          {canManageUsers && (
+                            <>
+                              <input
+                                type="number"
+                                min="1"
+                                className="level-input"
+                                value={levelInputs[user.id] ?? currentLevel}
+                                onChange={(e) =>
+                                  setLevelInputs((prev) => ({ ...prev, [user.id]: e.target.value }))
+                                }
+                                disabled={isBusy}
+                              />
 
-                          <button
-                            className="btn btn-primary"
-                            onClick={() => handleLevelUpdate(user.id, levelInputs[user.id] ?? currentLevel, currentLevel)}
-                            disabled={isBusy}
-                            type="button"
-                          >
-                            {updatingUserId === user.id ? "..." : "Save"}
-                          </button>
+                              <button
+                                className="btn btn-primary"
+                                onClick={() => handleLevelUpdate(user.id, levelInputs[user.id] ?? currentLevel, currentLevel)}
+                                disabled={isBusy}
+                                type="button"
+                              >
+                                {updatingUserId === user.id ? "..." : "Save"}
+                              </button>
 
-                          <button
-                            className="btn btn-danger"
-                            onClick={() => handleDeleteUser(user.id, user.email)}
-                            disabled={isBusy}
-                            type="button"
-                          >
-                            {deletingUserId === user.id ? "..." : "Delete"}
-                          </button>
+                              <button
+                                className="btn btn-danger"
+                                onClick={() => handleDeleteUser(user.id, user.email)}
+                                disabled={isBusy}
+                                type="button"
+                              >
+                                {deletingUserId === user.id ? "..." : "Delete"}
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -489,7 +508,8 @@ function Users({ authToken }) {
 }
 
 Users.propTypes = {
-  authToken: PropTypes.string.isRequired
+  authToken: PropTypes.string.isRequired,
+  role: PropTypes.oneOf(["admin", "invigilator"]).isRequired
 }
 
 export default Users
