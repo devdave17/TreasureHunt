@@ -1,6 +1,9 @@
 import express from "express"
 import cors from "cors"
 import "dotenv/config"
+import path from "path"
+import { fileURLToPath } from "url"
+
 import adminRoutes from "./src/routes/adminRoutes.js"
 import { adminAuth } from "./src/backend/middleware/adminAuth.js"
 import { loginAdmin } from "./src/Controllers/adminAuthController.js"
@@ -8,10 +11,13 @@ import { loginAdmin } from "./src/Controllers/adminAuthController.js"
 const app = express()
 const PORT = Number(process.env.PORT) || 5001
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 app.use(cors())
 app.use(express.json())
 
-// 🔥 ADD THIS (CSP FIX)
+// 🔥 CSP (yaha hi rehne de - routes se pehle)
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
@@ -20,9 +26,18 @@ app.use((req, res, next) => {
   next()
 })
 
+// 👇 routes
 app.post("/admin/auth/login", loginAdmin)
 app.use("/admin", adminAuth, adminRoutes)
 
+// 🔥 IMPORTANT: FRONTEND SERVE (YEH ADD KARNA HAI)
+app.use(express.static(path.join(__dirname, "dist")))
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"))
+})
+
+// 👇 last me server start
 app.listen(PORT, () => {
   console.log(`🔥 Server running on http://localhost:${PORT}`)
 })
