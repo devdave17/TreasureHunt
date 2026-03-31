@@ -5,6 +5,7 @@ import StartScreen from "./components/StartScreen";
 import MapScreen from "./components/MapScreen";
 import RiddleScreen from "./components/RiddleScreen";
 import WinnerScreen from "./components/WinnerScreen";
+import Timer from "./components/Timer";
 
 // Demo keys — in real event these would be actual outputs
 const DEMO_KEYS = {
@@ -85,6 +86,27 @@ const App = () => {
   const [startTime, setStartTime] = useState(null);
   const [currentRiddle, setCurrentRiddle] = useState(null);
   const [isSolvedRiddle, setIsSolvedRiddle] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(60); // 1 hour in seconds
+  const [isTimeExpired, setIsTimeExpired] = useState(false);
+  const [userDetails, setUserDetails] = useState({ email: "", name: "" });
+
+  // Timer effect
+  useEffect(() => {
+    if (startTime && !isTimeExpired && timeRemaining > 0) {
+      const timer = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            setIsTimeExpired(true);
+            goScreen("screen-winner");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [startTime, isTimeExpired, timeRemaining]);
 
   const goScreen = (screenId) => {
     setCurrentScreen(screenId);
@@ -97,9 +119,12 @@ const App = () => {
 
   const submitStartKey = (instituteEmail, name) => {
     console.log("Starting game with:", { instituteEmail, name });
+    setUserDetails({ email: instituteEmail, name });
     setStartTime(Date.now());
     setSolvedCount(0);
     setActiveRiddle(1);
+    setTimeRemaining(60); // Reset to 1 hour
+    setIsTimeExpired(false);
     goScreen("screen-map");
   };
 
@@ -145,6 +170,9 @@ const App = () => {
     setStartTime(null);
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
+    setTimeRemaining(60);
+    setIsTimeExpired(false);
+    setUserDetails({ email: "", name: "" });
 
     // Clear confetti
     document.querySelectorAll(".confetti-piece").forEach((c) => c.remove());
@@ -180,24 +208,30 @@ const App = () => {
         className={`screen ${currentScreen === "screen-map" ? "active" : ""}`}
         id="screen-map"
       >
-        <MapScreen
-          solvedCount={solvedCount}
-          activeRiddle={activeRiddle}
-          onNodeClick={openRiddle}
-          onExit={handleBackToLanding}
-        />
+        <>
+          <Timer timeRemaining={timeRemaining} isTimeExpired={isTimeExpired} />
+          <MapScreen
+            solvedCount={solvedCount}
+            activeRiddle={activeRiddle}
+            onNodeClick={openRiddle}
+            onExit={handleBackToLanding}
+          />
+        </>
       </section>
 
       <section
         className={`screen ${currentScreen === "screen-riddle" ? "active" : ""}`}
         id="screen-riddle"
       >
-        <RiddleScreen
-          riddle={currentRiddle}
-          isSolved={isSolvedRiddle}
-          onSubmit={submitRiddleKey}
-          onBack={handleBackToMap}
-        />
+        <>
+          <Timer timeRemaining={timeRemaining} isTimeExpired={isTimeExpired} />
+          <RiddleScreen
+            riddle={currentRiddle}
+            isSolved={isSolvedRiddle}
+            onSubmit={submitRiddleKey}
+            onBack={handleBackToMap}
+          />
+        </>
       </section>
 
       <section
@@ -208,6 +242,10 @@ const App = () => {
           startTime={startTime}
           onReset={resetGame}
           animation={true}
+          isTimeExpired={isTimeExpired}
+          timeRemaining={timeRemaining}
+          userDetails={userDetails}
+          solvedCount={solvedCount}
         />
       </section>
     </>

@@ -1,6 +1,14 @@
 import React, { useEffect } from "react";
 
-const WinnerScreen = ({ onReset, startTime, animation }) => {
+const WinnerScreen = ({
+  onReset,
+  startTime,
+  animation,
+  isTimeExpired,
+  timeRemaining,
+  userDetails,
+  solvedCount,
+}) => {
   useEffect(() => {
     console.log("WinnerScreen animation prop:", animation);
     if (animation) {
@@ -53,9 +61,47 @@ const WinnerScreen = ({ onReset, startTime, animation }) => {
 
   return (
     <>
-      <div className="winner-trophy">🏆</div>
-      <div className="winner-title">Treasure Found!</div>
-      <div className="winner-sub">You have conquered all 5 riddles!</div>
+      <div className="winner-trophy">{isTimeExpired ? "⏰" : "🏆"}</div>
+      <div className="winner-title">
+        {isTimeExpired ? "Time Expired!" : "Treasure Found!"}
+      </div>
+      <div className="winner-sub">
+        {isTimeExpired
+          ? `Time's up! You solved ${solvedCount}/5 riddles`
+          : "You have conquered all 5 riddles!"}
+      </div>
+
+      {/* User Details */}
+      <div
+        style={{
+          background: "var(--bg2)",
+          border: "1px solid var(--gold)",
+          borderRadius: "8px",
+          padding: "1rem",
+          margin: "1rem 0",
+          maxWidth: "400px",
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "0.9rem",
+            color: "var(--text-dim)",
+            marginBottom: "0.5rem",
+          }}
+        >
+          Participant Details
+        </div>
+        <div style={{ fontSize: "1rem", color: "var(--text)" }}>
+          <div>
+            <strong>Name:</strong> {userDetails.name}
+          </div>
+          <div>
+            <strong>Email:</strong> {userDetails.email}
+          </div>
+        </div>
+      </div>
+
       <p
         style={{
           fontSize: "1.15rem",
@@ -65,22 +111,26 @@ const WinnerScreen = ({ onReset, startTime, animation }) => {
           textAlign: "center",
         }}
       >
-        Exceptional work, Code Hunter! You've unlocked every chamber of the
-        treasure vault. Your result will be recorded under{" "}
-        <strong style={{ color: "var(--gold)" }}>ICPC Rules</strong>.
+        {isTimeExpired
+          ? `The 1-hour time limit has been reached. Your progress of ${solvedCount} riddles solved will be recorded under ${(<strong style={{ color: "var(--gold)" }}>ICPC Rules</strong>)}.`
+          : "Exceptional work, Code Hunter! You've unlocked every chamber of the treasure vault. Your result will be recorded under " +
+            <strong style={{ color: "var(--gold)" }}>ICPC Rules</strong> +
+            "."}
       </p>
       <div className="winner-stats">
         <div className="stat-box">
-          <div className="stat-val">5/5</div>
+          <div className="stat-val">{solvedCount}/5</div>
           <div className="stat-key">Riddles Solved</div>
         </div>
         <div className="stat-box">
-          <div className="stat-val">{formatTime(startTime)}</div>
+          <div className="stat-val">
+            {isTimeExpired ? "00:00" : formatTime(startTime)}
+          </div>
           <div className="stat-key">Time Elapsed</div>
         </div>
         <div className="stat-box">
-          <div className="stat-val">✓</div>
-          <div className="stat-key">All Tests Passed</div>
+          <div className="stat-val">{isTimeExpired ? "EXPIRED" : "✓"}</div>
+          <div className="stat-key">Status</div>
         </div>
       </div>
       <div className="btn-group" style={{ justifyContent: "center" }}>
