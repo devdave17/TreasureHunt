@@ -81,10 +81,12 @@ const StartScreen = ({ onSubmit, onBack }) => {
       <div className="panel anim-reveal">
         <div className="panel-title">🗝️ &nbsp;Enter Your Starting Key</div>
         <div className="panel-sub">
-          You will receive an{" "}
-          <strong style={{ color: "var(--gold)" }}>Initial Input Key</strong>{" "}
-          from the event team at the start. Enter it below to unlock your first
-          riddle and begin the treasure hunt.
+          Enter Your{" "}
+          <strong style={{ color: "var(--gold)" }}>
+            Institute Email and Name
+          </strong>{" "}
+          Enter it below to unlock your first riddle and begin the treasure
+          hunt.
         </div>
 
         <div className="input-group">
