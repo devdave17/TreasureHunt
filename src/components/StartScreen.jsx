@@ -1,63 +1,33 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const StartScreen = ({ onSubmit, onBack }) => {
+const StartScreen = ({
+  onSubmit,
+  onBack,
+  loginError = "",
+  isLoggingIn = false,
+}) => {
   const [institute_email, setInstituteEmail] = useState("");
-  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const emailRef = useRef(null);
-  const nameRef = useRef(null);
+  const passwordRef = useRef(null);
 
   useEffect(() => {
     setTimeout(() => emailRef.current?.focus(), 300);
-    spawnConfetti();
-
-    return () => {
-      // Clean up confetti when component unmounts
-      document.querySelectorAll(".confetti-piece").forEach((c) => c.remove());
-    };
   }, []);
 
-  const spawnConfetti = () => {
-    const colors = [
-      "#f5c842",
-      "#00e5c8",
-      "#ff4a4a",
-      "#39ff14",
-      "#ffffff",
-      "#ffa500",
-    ];
-    for (let i = 0; i < 60; i++) {
-      const confetti = document.createElement("div");
-      confetti.className = "confetti-piece";
-      confetti.style.cssText = `
-        left: ${Math.random() * 100}%;
-        background: ${colors[Math.floor(Math.random() * colors.length)]};
-        border-radius: ${Math.random() > 0.5 ? "50%" : "2px"};
-        width: ${Math.random() * 10 + 5}px;
-        height: ${Math.random() * 10 + 5}px;
-        --d: ${(Math.random() * 3 + 2).toFixed(1)}s;
-        --delay: ${(Math.random() * 2).toFixed(1)}s;
-      `;
-      document.body.appendChild(confetti);
-    }
-  };
-
   const handleSubmit = () => {
-    const trimmedInstituteEmail = institute_email.trim();
-    const trimmedName = name.trim().toUpperCase();
-    if (!trimmedInstituteEmail || !trimmedName) {
-      setError("Please enter both institute email and name.");
+    const trimmedEmail = institute_email.trim();
+    const trimmedPassword = password.trim();
+    if (!trimmedEmail || !trimmedPassword) {
+      setError("Please enter both email and master password.");
       return;
     }
-    if (!trimmedInstituteEmail.includes("@")) {
-      setError("Please enter a valid institute email.");
+    if (!trimmedEmail.includes("@")) {
+      setError("Please enter a valid email.");
       return;
     }
-    if (trimmedName.length < 2) {
-      setError("Please enter a valid name.");
-      return;
-    }
-    onSubmit(trimmedInstituteEmail, trimmedName);
+    onSubmit(trimmedEmail, trimmedPassword);
   };
 
   const handleKeyDown = (e) => {
@@ -71,31 +41,30 @@ const StartScreen = ({ onSubmit, onBack }) => {
     setError("");
   };
 
-  const handleNameChange = (e) => {
-    setName(e.target.value);
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
     setError("");
   };
 
   return (
     <>
       <div className="panel anim-reveal">
-        <div className="panel-title">🗝️ &nbsp;Enter Your Starting Key</div>
+        <div className="panel-title">🔐 &nbsp;Player Login</div>
         <div className="panel-sub">
-          Enter Your{" "}
+          Login with your registered{" "}
           <strong style={{ color: "var(--gold)" }}>
-            Institute Email and Name
+            Email and Master Password
           </strong>{" "}
-          Enter it below to unlock your first riddle and begin the treasure
-          hunt.
+          Only registered users can continue.
         </div>
 
         <div className="input-group">
-          <div className="input-label">// Institute Email</div>
+          <div className="input-label">// Email</div>
           <input
             ref={emailRef}
             type="email"
             className="key-input"
-            placeholder="Enter institute email here..."
+            placeholder="Enter your registered email..."
             autoComplete="off"
             spellCheck="false"
             value={institute_email}
@@ -105,28 +74,28 @@ const StartScreen = ({ onSubmit, onBack }) => {
         </div>
 
         <div className="input-group">
-          <div className="input-label">// Your Name</div>
+          <div className="input-label">// Master Password</div>
           <input
-            ref={nameRef}
-            type="text"
+            ref={passwordRef}
+            type="password"
             className="key-input"
-            placeholder="Enter name here..."
+            placeholder="Enter master password..."
             autoComplete="off"
             spellCheck="false"
-            value={name}
-            onChange={handleNameChange}
+            value={password}
+            onChange={handlePasswordChange}
             onKeyDown={handleKeyDown}
           />
           <div className="input-hint">
-            # Key will be displayed on screen or handed physically by event
-            staff
+            # Same master password for all participants
           </div>
         </div>
-        <div className="error-msg">{error}</div>
+
+        <div className="error-msg">{error || loginError}</div>
 
         <div className="btn-group" style={{ marginTop: ".5rem" }}>
-          <button className="btn-primary" onClick={handleSubmit}>
-            🔓 &nbsp;Unlock Map
+          <button className="btn-primary" onClick={handleSubmit} disabled={isLoggingIn}>
+            {isLoggingIn ? "⏳ Logging in..." : "Login →"}
           </button>
           <button className="btn-secondary" onClick={onBack}>
             ← Back

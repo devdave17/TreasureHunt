@@ -7,9 +7,6 @@ const RiddleScreen = ({ riddle, onSubmit, onBack, isSolved }) => {
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 300);
-
-    // Remove any existing confetti when entering riddle screen
-    document.querySelectorAll(".confetti-piece").forEach((c) => c.remove());
   }, [riddle]);
 
   const handleSubmit = () => {

@@ -1,4 +1,6 @@
 import { db, dbConfig } from "../backend/database/dbConfig.js"
+import { normalizeQuestSchedule, getQuestStartAtMs } from "../utils/questTiming.js"
+import admin from "../backend/firebase/firebaseConfig.js"
 import { readFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -275,9 +277,16 @@ export const deleteAllUsers = async (req, res) => {
 export const getQuests = async (req, res) => {
   try {
     const snapshot = await db.collection(dbConfig.COLLECTIONS.QUESTS).get()
-    const quests = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    const quests = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...normalizeQuestSchedule(doc.data() || {})
+    }))
 
     quests.sort((a, b) => {
+      const aStart = Number(a.startAtMs) || 0
+      const bStart = Number(b.startAtMs) || 0
+      if (aStart !== bStart) return aStart - bStart
+
       const aName = String(a.name || "").toLowerCase()
       const bName = String(b.name || "").toLowerCase()
       return aName.localeCompare(bName)
@@ -293,13 +302,26 @@ export const getQuests = async (req, res) => {
 // ✅ ADD QUEST
 export const addQuest = async (req, res) => {
   try {
-    const { name, code = "", description = "", isActive = true } = req.body
+    const {
+      name,
+      code = "",
+      description = "",
+      durationMinutes = 60,
+      startAtMs,
+      isActive = true
+    } = req.body
 
     const questName = String(name || "").trim()
     const questCode = String(code || "").trim().toUpperCase()
+    const parsedDurationMinutes = Number(durationMinutes)
+    const parsedStartAtMs = getQuestStartAtMs({ startAtMs })
 
     if (!questName) {
       return res.status(400).json({ error: "Quest name is required" })
+    }
+
+    if (!Number.isInteger(parsedDurationMinutes) || parsedDurationMinutes < 1) {
+      return res.status(400).json({ error: "Time duration must be a positive whole number" })
     }
 
     if (questCode) {
@@ -318,12 +340,16 @@ export const addQuest = async (req, res) => {
       name: questName,
       code: questCode,
       description: String(description || "").trim(),
+      durationMinutes: parsedDurationMinutes,
+      startAtMs: parsedStartAtMs,
+      startAt: admin.firestore.Timestamp.fromMillis(parsedStartAtMs),
       isActive: Boolean(isActive),
       createdAt: new Date(),
       updatedAt: new Date()
     }
 
     const docRef = await db.collection(dbConfig.COLLECTIONS.QUESTS).add(quest)
+
     res.status(201).json({
       message: "Quest created successfully",
       quest: { id: docRef.id, ...quest }
@@ -338,7 +364,14 @@ export const addQuest = async (req, res) => {
 export const updateQuest = async (req, res) => {
   try {
     const { questId } = req.params
-    const { name, code = "", description = "", isActive = true } = req.body
+    const {
+      name,
+      code = "",
+      description = "",
+      durationMinutes = 60,
+      startAtMs,
+      isActive = true
+    } = req.body
 
     if (!questId) {
       return res.status(400).json({ error: "questId is required" })
@@ -346,9 +379,15 @@ export const updateQuest = async (req, res) => {
 
     const questName = String(name || "").trim()
     const questCode = String(code || "").trim().toUpperCase()
+    const parsedDurationMinutes = Number(durationMinutes)
+    const parsedStartAtMs = getQuestStartAtMs({ startAtMs })
 
     if (!questName) {
       return res.status(400).json({ error: "Quest name is required" })
+    }
+
+    if (!Number.isInteger(parsedDurationMinutes) || parsedDurationMinutes < 1) {
+      return res.status(400).json({ error: "Time duration must be a positive whole number" })
     }
 
     if (questCode) {
@@ -368,6 +407,9 @@ export const updateQuest = async (req, res) => {
       name: questName,
       code: questCode,
       description: String(description || "").trim(),
+      durationMinutes: parsedDurationMinutes,
+      startAtMs: parsedStartAtMs,
+      startAt: admin.firestore.Timestamp.fromMillis(parsedStartAtMs),
       isActive: Boolean(isActive),
       updatedAt: new Date()
     })
@@ -391,17 +433,26 @@ export const deleteQuest = async (req, res) => {
     const questionsSnapshot = await db
       .collection(dbConfig.COLLECTIONS.QUESTIONS)
       .where("questId", "==", questId)
-      .limit(1)
       .get()
 
-    if (!questionsSnapshot.empty) {
-      return res.status(409).json({
-        error: "Cannot delete quest with existing questions. Remove questions first."
-      })
-    }
+    const bulkWriter = db.bulkWriter()
+    questionsSnapshot.docs.forEach((doc) => {
+      bulkWriter.delete(doc.ref)
+    })
+    bulkWriter.delete(db.collection(dbConfig.COLLECTIONS.QUESTS).doc(questId))
 
-    await db.collection(dbConfig.COLLECTIONS.QUESTS).doc(questId).delete()
-    res.json({ message: "Quest deleted successfully", questId })
+    await bulkWriter.close()
+
+    req.io?.emit("quest-changed", {
+      action: "deleted",
+      questId
+    })
+
+    res.json({
+      message: "Quest deleted successfully",
+      questId,
+      deletedQuestions: questionsSnapshot.size
+    })
   } catch (error) {
     console.error("Error deleting quest:", error)
     res.status(500).json({ error: "Failed to delete quest" })

@@ -1,40 +1,6 @@
-import React, { useEffect } from "react";
+import React from "react";
 
 const LandingScreen = ({ onStart }) => {
-  useEffect(() => {
-    spawnConfetti();
-
-    return () => {
-      // Clean up confetti when component unmounts
-      document.querySelectorAll(".confetti-piece").forEach((c) => c.remove());
-    };
-  }, []);
-
-  const spawnConfetti = () => {
-    const colors = [
-      "#f5c842",
-      "#00e5c8",
-      "#ff4a4a",
-      "#39ff14",
-      "#ffffff",
-      "#ffa500",
-    ];
-    for (let i = 0; i < 60; i++) {
-      const confetti = document.createElement("div");
-      confetti.className = "confetti-piece";
-      confetti.style.cssText = `
-        left: ${Math.random() * 100}%;
-        background: ${colors[Math.floor(Math.random() * colors.length)]};
-        border-radius: ${Math.random() > 0.5 ? "50%" : "2px"};
-        width: ${Math.random() * 10 + 5}px;
-        height: ${Math.random() * 10 + 5}px;
-        --d: ${(Math.random() * 3 + 2).toFixed(1)}s;
-        --delay: ${(Math.random() * 2).toFixed(1)}s;
-      `;
-      document.body.appendChild(confetti);
-    }
-  };
-
   return (
     <>
       <div className="landing-badge">⚡ Cout &lt;&lt; Masters; presents</div>
@@ -68,7 +34,7 @@ const LandingScreen = ({ onStart }) => {
           <div>
             <div className="rule-title">Follow the Map</div>
             <div className="rule-text">
-              5 stages on the treasure map — Easy → Medium → Hard. Each node
+              Dynamic stages on the treasure map — Easy → Medium → Hard. Each node
               unlocks a new puzzle.
             </div>
           </div>
@@ -88,7 +54,8 @@ const LandingScreen = ({ onStart }) => {
           <div>
             <div className="rule-title">Win the Hunt</div>
             <div className="rule-text">
-              Solve all 5 challenges before time runs out to claim the treasure!
+              Solve every challenge in your selected quest before time runs out
+              to claim the treasure!
             </div>
           </div>
         </div>

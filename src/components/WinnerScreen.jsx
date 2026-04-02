@@ -1,56 +1,14 @@
-import React, { useEffect } from "react";
+import React from "react";
 
 const WinnerScreen = ({
   onReset,
   startTime,
-  animation,
   isTimeExpired,
   timeRemaining,
   userDetails,
   solvedCount,
+  totalRiddles = 0,
 }) => {
-  useEffect(() => {
-    console.log("WinnerScreen animation prop:", animation);
-    if (animation) {
-      spawnConfetti();
-    }
-
-    return () => {
-      // Clean up confetti when component unmounts
-      document.querySelectorAll(".confetti-piece").forEach((c) => c.remove());
-    };
-  }, [animation]);
-
-  const spawnConfetti = () => {
-    console.log("Spawning confetti in WinnerScreen");
-    const colors = [
-      "#f5c842",
-      "#00e5c8",
-      "#ff4a4a",
-      "#39ff14",
-      "#ffffff",
-      "#ffa500",
-    ];
-    for (let i = 0; i < 60; i++) {
-      const confetti = document.createElement("div");
-      confetti.className = "confetti-piece";
-      confetti.style.cssText = `
-        left: ${Math.random() * 100}%;
-        background: ${colors[Math.floor(Math.random() * colors.length)]};
-        border-radius: ${Math.random() > 0.5 ? "50%" : "2px"};
-        width: ${Math.random() * 10 + 5}px;
-        height: ${Math.random() * 10 + 5}px;
-        --d: ${(Math.random() * 3 + 2).toFixed(1)}s;
-        --delay: ${(Math.random() * 2).toFixed(1)}s;
-      `;
-      document.body.appendChild(confetti);
-    }
-    console.log(
-      "Confetti pieces created:",
-      document.querySelectorAll(".confetti-piece").length,
-    );
-  };
-
   const formatTime = (startTime) => {
     if (!startTime) return "--:--";
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -67,8 +25,8 @@ const WinnerScreen = ({
       </div>
       <div className="winner-sub">
         {isTimeExpired
-          ? `Time's up! You solved ${solvedCount}/5 riddles`
-          : "You have conquered all 5 riddles!"}
+          ? `Time's up! You solved ${solvedCount}/${totalRiddles} riddles`
+          : `You have conquered all ${totalRiddles} riddles!`}
       </div>
 
       {/* User Details */}
@@ -112,14 +70,14 @@ const WinnerScreen = ({
         }}
       >
         {isTimeExpired
-          ? `The 1-hour time limit has been reached. Your progress of ${solvedCount} riddles solved will be recorded under ${(<strong style={{ color: "var(--gold)" }}>ICPC Rules</strong>)}.`
-          : "Exceptional work, Code Hunter! You've unlocked every chamber of the treasure vault. Your result will be recorded under " +
-            <strong style={{ color: "var(--gold)" }}>ICPC Rules</strong> +
-            "."}
+          ? `The 1-hour time limit has been reached. Your progress of ${solvedCount} solved riddles will be recorded under ICPC Rules.`
+          : "Exceptional work, Code Hunter! You've unlocked every chamber of the treasure vault. Your result will be recorded under ICPC Rules."}
       </p>
       <div className="winner-stats">
         <div className="stat-box">
-          <div className="stat-val">{solvedCount}/5</div>
+          <div className="stat-val">
+            {solvedCount}/{totalRiddles}
+          </div>
           <div className="stat-key">Riddles Solved</div>
         </div>
         <div className="stat-box">

@@ -754,6 +754,14 @@ body {
   background: var(--chip-bg);
   color: var(--chip-text);
 }
+.badge-live {
+  background: #e8f9f0;
+  color: #206846;
+}
+.badge-pending {
+  background: #fff4e5;
+  color: #8a5a00;
+}
 
 .badge-difficulty {
   padding: 4px 10px;
@@ -790,6 +798,25 @@ body {
   font-size: 0.9rem;
   line-height: 1.4;
   color: #333;
+}
+.checkbox-group {
+  align-content: end;
+}
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 600;
+  color: #3b5578;
+  -webkit-user-select:none;
+  user-select: none;
+}
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
 }
 
 .answer-field {

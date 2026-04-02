@@ -3,6 +3,7 @@ import PropTypes from "prop-types"
 import Sidebar from "./Sidebar"
 import Dashboard from "./Dashboard"
 import Users from "./Users"
+import Quests from "./Quests"
 import Questions from "./Questions"
 import Stats from "./Stats"
 
@@ -13,7 +14,7 @@ function AdminLayout({ authToken, role, onLogout }) {
 
   const allowedTabs = resolvedRole === "invigilator"
     ? ["dashboard", "users"]
-    : ["dashboard", "users", "questions", "stats"]
+    : ["dashboard", "users", "quests", "questions", "stats"]
 
   const safeActiveTab = allowedTabs.includes(activeTab) ? activeTab : "dashboard"
 
@@ -23,6 +24,8 @@ function AdminLayout({ authToken, role, onLogout }) {
         return <Dashboard authToken={authToken} role={resolvedRole} />
       case "users":
         return <Users authToken={authToken} role={resolvedRole} />
+      case "quests":
+        return <Quests authToken={authToken} />
       case "questions":
         return <Questions authToken={authToken} />
       case "stats":

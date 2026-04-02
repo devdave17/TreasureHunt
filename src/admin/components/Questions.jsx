@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react"
 import PropTypes from "prop-types"
 import { api } from "../api.js"
+import {
+  formatCountdownLabel,
+  formatDateTimeLabel,
+  getQuestDurationMinutes,
+  getQuestLiveState
+} from "../../utils/questTiming.js"
 
 function Questions({ authToken }) {
   const [quests, setQuests] = useState([])
@@ -14,13 +20,7 @@ function Questions({ authToken }) {
 
   const [editingId, setEditingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
-  const [creatingQuest, setCreatingQuest] = useState(false)
-
-  const [questForm, setQuestForm] = useState({
-    name: "",
-    code: "",
-    description: ""
-  })
+  const [now, setNow] = useState(Date.now())
 
   const [formData, setFormData] = useState({
     level: "",
@@ -44,6 +44,11 @@ function Questions({ authToken }) {
       setQuestions([])
     }
   }, [authToken, selectedQuestId])
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const initializeData = async () => {
     try {
@@ -73,45 +78,6 @@ function Questions({ authToken }) {
       setError(err.message || "Failed to load questions")
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleQuestFormChange = (event) => {
-    const { name, value } = event.target
-    setQuestForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleCreateQuest = async (event) => {
-    event.preventDefault()
-    const payload = {
-      name: questForm.name.trim(),
-      code: questForm.code.trim().toUpperCase(),
-      description: questForm.description.trim()
-    }
-
-    if (!payload.name) {
-      setError("Quest name is required")
-      return
-    }
-
-    setCreatingQuest(true)
-    setError("")
-    setSuccessMessage("")
-
-    try {
-      const created = await api.addQuest(payload, authToken)
-      setQuests((prev) => {
-        const next = [...prev, created]
-        next.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
-        return next
-      })
-      setSelectedQuestId(created.id)
-      setQuestForm({ name: "", code: "", description: "" })
-      setSuccessMessage("Quest created successfully")
-    } catch (err) {
-      setError(err.message || "Failed to create quest")
-    } finally {
-      setCreatingQuest(false)
     }
   }
 
@@ -209,11 +175,12 @@ function Questions({ authToken }) {
   }
 
   const selectedQuest = quests.find((quest) => quest.id === selectedQuestId) || null
+  const selectedQuestLiveState = selectedQuest ? getQuestLiveState(selectedQuest, now) : null
 
   return (
     <div className="module-container">
       <div className="module-header">
-        <h2>Quest Question Management</h2>
+        <h2>Question Management</h2>
         {editingId && (
           <button className="btn btn-secondary" onClick={resetForm} type="button">
             Cancel Edit
@@ -223,55 +190,6 @@ function Questions({ authToken }) {
 
       {error && <div className="state-box error">{error}</div>}
       {successMessage && <div className="state-box success">{successMessage}</div>}
-
-      <section className="form-section">
-        <h3>Create New Quest</h3>
-        <form className="question-form" onSubmit={handleCreateQuest}>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="quest-name">Quest Name *</label>
-              <input
-                id="quest-name"
-                type="text"
-                name="name"
-                value={questForm.name}
-                onChange={handleQuestFormChange}
-                placeholder="e.g. Beginner Treasure Trail"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="quest-code">Quest Code</label>
-              <input
-                id="quest-code"
-                type="text"
-                name="code"
-                value={questForm.code}
-                onChange={handleQuestFormChange}
-                placeholder="e.g. QUEST-01"
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="quest-description">Description</label>
-            <textarea
-              id="quest-description"
-              name="description"
-              rows="2"
-              value={questForm.description}
-              onChange={handleQuestFormChange}
-              placeholder="Short description for admins"
-            />
-          </div>
-
-          <div className="form-actions">
-            <button className="btn btn-primary" type="submit" disabled={creatingQuest}>
-              {creatingQuest ? "Creating..." : "Create Quest"}
-            </button>
-          </div>
-        </form>
-      </section>
 
       <section className="form-section">
         <h3>Select Quest</h3>
@@ -308,6 +226,12 @@ function Questions({ authToken }) {
             <div className="state-box">
               Selected Quest: <strong>{selectedQuest.name}</strong>
               {selectedQuest.code ? ` (${selectedQuest.code})` : ""}
+              <br />
+              Time Duration: <strong>{getQuestDurationMinutes(selectedQuest, 60)} minutes</strong>
+              <br />
+              Go Live At: <strong>{formatDateTimeLabel(selectedQuest.startAtMs)}</strong>
+              <br />
+              Status: <strong>{selectedQuestLiveState?.isLive ? "Live now" : `Opens in ${formatCountdownLabel(selectedQuestLiveState?.secondsUntilLive || 0)}`}</strong>
             </div>
 
             <form onSubmit={handleSubmit} className="question-form">

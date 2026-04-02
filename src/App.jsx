@@ -1,83 +1,39 @@
 import React, { useState, useEffect } from "react";
+import { io } from "socket.io-client";
 import Stars from "./components/Stars";
 import LandingScreen from "./components/LandingScreen";
 import StartScreen from "./components/StartScreen";
+import QuestScreen from "./components/QuestScreen";
 import MapScreen from "./components/MapScreen";
 import RiddleScreen from "./components/RiddleScreen";
 import WinnerScreen from "./components/WinnerScreen";
 import Timer from "./components/Timer";
+import { getQuestDurationSeconds, getQuestStartAtMs } from "./utils/questTiming.js";
 
-// Demo keys — in real event these would be actual outputs
-const DEMO_KEYS = {
-  start: "TREASURE2026", // initial key
-  1: "ECHO42", // output of problem 1 unlocks riddle 2
-  2: "LOOP99",
-  3: "STACK777",
-  4: "BINARY01",
+const GAME_API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const PLAYER_SESSION_KEY = "treasurehunt_player_session";
+
+const toRoman = (num) => {
+  const romans = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV"];
+  return romans[num - 1] || String(num);
 };
 
-const RIDDLES = [
-  {
-    num: 1,
-    icon: "📜",
-    title: "Riddle I — The Echo Chamber",
-    stage: "STAGE 1 OF 5",
-    difficulty: "EASY",
-    riddle:
-      '"I repeat everything you say, yet I say nothing of my own. I live inside every terminal. What am I?"',
-    problem:
-      "Problem 1 is now unlocked on HackerRank. Write a program that echoes a given input string in uppercase. Your output is your key to the next riddle.",
-    prevNum: 0,
-  },
-  {
-    num: 2,
-    icon: "🧩",
-    title: "Riddle II — The Endless Loop",
-    stage: "STAGE 2 OF 5",
-    difficulty: "EASY",
-    riddle:
-      '"I run and run but never move. I repeat until you tell me to stop. What am I?"',
-    problem:
-      "Problem 2 is unlocked! Find the sum of all numbers from 1 to N where N is provided as input. Submit your output as the next key.",
-    prevNum: 1,
-  },
-  {
-    num: 3,
-    icon: "⚙️",
-    title: "Riddle III — The Stack's Secret",
-    stage: "STAGE 3 OF 5",
-    difficulty: "MEDIUM",
-    riddle:
-      '"Last in, first out — I remember in reverse. Parentheses fear me. What data structure am I?"',
-    problem:
-      'Problem 3 unlocked! Check if a given string of brackets is balanced. Return "VALID" or "INVALID". That word is your next key.',
-    prevNum: 2,
-  },
-  {
-    num: 4,
-    icon: "🔮",
-    title: "Riddle IV — The Binary Oracle",
-    stage: "STAGE 4 OF 5",
-    difficulty: "MEDIUM",
-    riddle:
-      '"I see the world in only two states — zero and one. I can search a sorted list in O(log n). What algorithm am I?"',
-    problem:
-      "Problem 4 unlocked! Implement binary search on a sorted array. Return the index of the target, or -1 if not found. Output is your final key.",
-    prevNum: 3,
-  },
-  {
-    num: 5,
-    icon: "💎",
-    title: "Riddle V — The Final Cipher",
-    stage: "STAGE 5 OF 5 · FINAL BOSS",
-    difficulty: "HARD",
-    riddle:
-      '"I can hold the whole world in my nodes and edges. I find the shortest path through chaos. I am the map itself. What am I?"',
-    problem:
-      "FINAL CHALLENGE! Implement Dijkstra's shortest path algorithm on a weighted graph. Find the minimum cost from source to all vertices. This is your ultimate test. There is no next key — only victory.",
-    prevNum: 4,
-  },
-];
+const mapQuestionToRiddle = (question, index, total) => {
+  const step = index + 1;
+  const safeDifficulty = String(question.difficulty || "MEDIUM").toUpperCase();
+
+  return {
+    id: question.id,
+    num: step,
+    icon: ["📜", "🧩", "⚙️", "🔮", "💎", "🧭", "🏺", "🗝️", "📦", "🧠"][(step - 1) % 10],
+    title: question.title || `Riddle ${toRoman(step)}`,
+    stage: `STAGE ${step} OF ${total}`,
+    difficulty: safeDifficulty,
+    riddle: question.riddleText || "Decode the challenge and unlock the path.",
+    problem: question.problemStatement || "Solve the coding problem to proceed.",
+    prevNum: Math.max(0, step - 1),
+  };
+};
 
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState("screen-landing");
@@ -86,9 +42,106 @@ const App = () => {
   const [startTime, setStartTime] = useState(null);
   const [currentRiddle, setCurrentRiddle] = useState(null);
   const [isSolvedRiddle, setIsSolvedRiddle] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(60); // 1 hour in seconds
+  const [timeRemaining, setTimeRemaining] = useState(3600);
   const [isTimeExpired, setIsTimeExpired] = useState(false);
-  const [userDetails, setUserDetails] = useState({ email: "", name: "" });
+  const [userDetails, setUserDetails] = useState({ id: "", email: "", name: "", score: 0, currentLevel: 1, completedLevels: [] });
+  const [quests, setQuests] = useState([]);
+  const [selectedQuestId, setSelectedQuestId] = useState("");
+  const [questions, setQuestions] = useState([]);
+  const [loadingQuests, setLoadingQuests] = useState(true);
+  const [questError, setQuestError] = useState("");
+  const [shouldShowProfileModal, setShouldShowProfileModal] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLaunchingQuest, setIsLaunchingQuest] = useState(false);
+  const [questLockNotice, setQuestLockNotice] = useState(null);
+
+  const isPlayerLoggedIn = Boolean(userDetails.email && userDetails.name);
+
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem(PLAYER_SESSION_KEY);
+      if (!savedSession) return;
+
+      const parsed = JSON.parse(savedSession);
+      if (parsed?.email && parsed?.name) {
+        setUserDetails({
+          id: parsed.id || "",
+          email: parsed.email,
+          name: parsed.name,
+          score: Number(parsed.score) || 0,
+          currentLevel: Number(parsed.currentLevel) || 1,
+          completedLevels: Array.isArray(parsed.completedLevels) ? parsed.completedLevels : []
+        });
+        setCurrentScreen("screen-quest");
+      }
+    } catch {
+      localStorage.removeItem(PLAYER_SESSION_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchQuests = async () => {
+      try {
+        setLoadingQuests(true);
+        const response = await fetch(`${GAME_API_BASE}/game/quests`);
+        const data = await response.json();
+        const questList = Array.isArray(data) ? data : [];
+        setQuests(questList);
+        setSelectedQuestId((currentSelected) => {
+          if (currentSelected && questList.some((quest) => quest.id === currentSelected)) {
+            return currentSelected;
+          }
+
+          return questList[0]?.id || "";
+        });
+      } catch {
+        setQuestError("Unable to load quests right now. Please try again.");
+      } finally {
+        setLoadingQuests(false);
+      }
+    };
+
+    fetchQuests();
+
+    const socket = io(GAME_API_BASE, {
+      transports: ["websocket"]
+    });
+
+    const syncQuestList = (payload = {}) => {
+      if (payload.action === "deleted") {
+        setQuests((prev) => {
+          const next = prev.filter((quest) => quest.id !== payload.questId);
+          setSelectedQuestId((currentSelected) => {
+            if (currentSelected !== payload.questId) {
+              return currentSelected;
+            }
+
+            return next[0]?.id || "";
+          });
+          return next;
+        });
+        return;
+      }
+
+      if (payload.quest) {
+        setQuests((prev) => {
+          const next = [...prev.filter((quest) => quest.id !== payload.quest.id), payload.quest];
+          next.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+          return next;
+        });
+
+        setSelectedQuestId((currentSelected) => currentSelected || payload.quest.id);
+      }
+    };
+
+    socket.on("quest-changed", syncQuestList);
+
+    return () => {
+      socket.off("quest-changed", syncQuestList);
+      socket.disconnect();
+    };
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -114,22 +167,124 @@ const App = () => {
   };
 
   const goToStart = () => {
+    if (isPlayerLoggedIn) {
+      goScreen("screen-quest");
+      return;
+    }
     goScreen("screen-start");
   };
 
-  const submitStartKey = (instituteEmail, name) => {
-    console.log("Starting game with:", { instituteEmail, name });
-    setUserDetails({ email: instituteEmail, name });
+  const submitStartKey = async (email, password) => {
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const response = await fetch(`${GAME_API_BASE}/game/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setLoginError(payload?.error || "Login failed. Please check your details.");
+        setIsLoggingIn(false);
+        return;
+      }
+
+      const player = payload?.player || {};
+      const nextUser = {
+        id: player.id || "",
+        email: player.email || email,
+        name: player.name || "",
+        score: Number(player.score) || 0,
+        currentLevel: Number(player.currentLevel) || 1,
+        completedLevels: Array.isArray(player.completedLevels) ? player.completedLevels : []
+      };
+
+      setUserDetails(nextUser);
+      localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(nextUser));
+      setQuestError("");
+      setShouldShowProfileModal(true);
+      goScreen("screen-quest");
+    } catch {
+      setLoginError("Unable to connect right now. Please try again.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const launchSelectedQuest = async (questId) => {
+    const questToLaunch = questId || selectedQuestId;
+    const questMeta = quests.find((quest) => quest.id === questToLaunch) || null;
+
+    if (!questToLaunch) {
+      setQuestError("Please select a quest before starting.");
+      return;
+    }
+
+    if (!questMeta) {
+      setQuestError("Selected quest is no longer available. Please choose another quest.");
+      return;
+    }
+
+    const startAtMs = getQuestStartAtMs(questMeta);
+    const nowMs = Date.now();
+    const isLive = nowMs >= startAtMs;
+    const questDurationSeconds = getQuestDurationSeconds(questMeta);
+
+    if (!isLive) {
+      setQuestLockNotice({
+        questName: questMeta.name || "Selected quest",
+        startAtMs
+      });
+      return;
+    }
+
+    setQuestLockNotice(null);
+
+    if (questToLaunch !== selectedQuestId) {
+      setSelectedQuestId(questToLaunch);
+    }
+
+    setIsLaunchingQuest(true);
+    setQuestError("");
+
+    try {
+      const response = await fetch(`${GAME_API_BASE}/game/quests/${questToLaunch}/questions`);
+      const payload = await response.json();
+      const questionList = Array.isArray(payload?.questions) ? payload.questions : [];
+
+      if (questionList.length === 0) {
+        setQuestError("Selected quest has no questions yet. Ask admin to add questions.");
+        setIsLaunchingQuest(false);
+        return;
+      }
+
+      setQuestions(questionList);
+    } catch {
+      setQuestError("Failed to load quest questions. Please retry.");
+      setIsLaunchingQuest(false);
+      return;
+    }
+
     setStartTime(Date.now());
     setSolvedCount(0);
     setActiveRiddle(1);
-    setTimeRemaining(60); // Reset to 1 hour
+    setTimeRemaining(questDurationSeconds);
     setIsTimeExpired(false);
+    setCurrentRiddle(null);
+    setIsSolvedRiddle(false);
+    setIsLaunchingQuest(false);
     goScreen("screen-map");
   };
 
   const openRiddle = (riddleNum, isSolved = false) => {
-    const riddle = RIDDLES[riddleNum - 1];
+    const question = questions[riddleNum - 1];
+    if (!question) return;
+
+    const riddle = mapQuestionToRiddle(question, riddleNum - 1, questions.length);
     setCurrentRiddle(riddle);
     setIsSolvedRiddle(isSolved);
     setActiveRiddle(riddleNum);
@@ -137,14 +292,11 @@ const App = () => {
   };
 
   const submitRiddleKey = (key) => {
-    const expectedKey = DEMO_KEYS[activeRiddle];
-
-    // Demo: accept correct key OR "SKIP" for demo purposes
-    if (key === expectedKey || key === "SKIP" || key === "DEMO") {
+    if (String(key || "").trim().length > 0) {
       // Correct!
       setSolvedCount((prev) => prev + 1);
 
-      if (activeRiddle === 5) {
+      if (activeRiddle >= questions.length) {
         // Winner!
         showWinner();
       } else {
@@ -164,21 +316,41 @@ const App = () => {
   };
 
   const resetGame = () => {
-    setCurrentScreen("screen-landing");
+    setCurrentScreen("screen-quest");
     setSolvedCount(0);
     setActiveRiddle(0);
     setStartTime(null);
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
-    setTimeRemaining(60);
+    setTimeRemaining(3600);
     setIsTimeExpired(false);
-    setUserDetails({ email: "", name: "" });
-
-    // Clear confetti
-    document.querySelectorAll(".confetti-piece").forEach((c) => c.remove());
+    setQuestions([]);
+    setQuestError("");
+    setLoginError("");
+    setIsLaunchingQuest(false);
+    setQuestLockNotice(null);
   };
 
   const handleBackToLanding = () => {
+    goScreen("screen-landing");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(PLAYER_SESSION_KEY);
+    setUserDetails({ id: "", email: "", name: "", score: 0, currentLevel: 1, completedLevels: [] });
+    setSelectedQuestId("");
+    setQuestions([]);
+    setSolvedCount(0);
+    setActiveRiddle(0);
+    setStartTime(null);
+    setCurrentRiddle(null);
+    setIsSolvedRiddle(false);
+    setTimeRemaining(3600);
+    setIsTimeExpired(false);
+    setQuestError("");
+    setLoginError("");
+    setIsLaunchingQuest(false);
+    setQuestLockNotice(null);
     goScreen("screen-landing");
   };
 
@@ -201,7 +373,33 @@ const App = () => {
         className={`screen ${currentScreen === "screen-start" ? "active" : ""}`}
         id="screen-start"
       >
-        <StartScreen onSubmit={submitStartKey} onBack={handleBackToLanding} />
+        <StartScreen
+          onSubmit={submitStartKey}
+          onBack={handleBackToLanding}
+          loginError={loginError}
+          isLoggingIn={isLoggingIn}
+        />
+      </section>
+
+      <section
+        className={`screen ${currentScreen === "screen-quest" ? "active" : ""}`}
+        id="screen-quest"
+      >
+        <QuestScreen
+          userDetails={userDetails}
+          quests={quests}
+          selectedQuestId={selectedQuestId}
+          onQuestChange={setSelectedQuestId}
+          loadingQuests={loadingQuests}
+          questError={questError}
+          isLaunching={isLaunchingQuest}
+          onOpenQuest={launchSelectedQuest}
+          onLogout={handleLogout}
+          shouldShowProfileModal={shouldShowProfileModal}
+          onProfileModalShown={() => setShouldShowProfileModal(false)}
+          questLockNotice={questLockNotice}
+          onCloseQuestLockNotice={() => setQuestLockNotice(null)}
+        />
       </section>
 
       <section
@@ -214,7 +412,8 @@ const App = () => {
             solvedCount={solvedCount}
             activeRiddle={activeRiddle}
             onNodeClick={openRiddle}
-            onExit={handleBackToLanding}
+            onExit={() => goScreen("screen-quest")}
+            questions={questions}
           />
         </>
       </section>
@@ -246,6 +445,7 @@ const App = () => {
           timeRemaining={timeRemaining}
           userDetails={userDetails}
           solvedCount={solvedCount}
+          totalRiddles={questions.length}
         />
       </section>
     </>
