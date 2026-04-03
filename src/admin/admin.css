@@ -137,8 +137,7 @@ body {
   font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
   background:
     radial-gradient(circle at 2% 0%, #deebff 0, transparent 35%),
-    radial-gradient(circle at 98% 100%, #eaf1fd 0, transparent 40%),
-    var(--bg);
+    radial-gradient(circle at 98% 100%, #eaf1fd 0, transparent 40%), var(--bg);
   color: var(--text);
 }
 
@@ -395,7 +394,9 @@ body {
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease, opacity 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .btn:disabled,
@@ -809,7 +810,7 @@ body {
   min-height: 44px;
   font-weight: 600;
   color: #3b5578;
-  -webkit-user-select:none;
+  -webkit-user-select: none;
   user-select: none;
 }
 .checkbox-label input {
@@ -1055,4 +1056,46 @@ body {
   .form-actions button {
     width: 100%;
   }
+}
+
+/* ============================================== */
+/* LEVELS PASSED & SCORE STYLES */
+/* ============================================== */
+
+.levels-passed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 200px;
+}
+
+.level-badge-simple {
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.score-cell {
+  font-weight: 600;
+  color: var(--primary);
+  text-align: center;
+  min-width: 60px;
+}
+
+.users-table th:nth-child(6),
+.users-table th:nth-child(7),
+.users-table td:nth-child(6),
+.users-table td:nth-child(7) {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.users-table td:nth-child(6) {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

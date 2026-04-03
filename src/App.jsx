@@ -8,13 +8,34 @@ import MapScreen from "./components/MapScreen";
 import RiddleScreen from "./components/RiddleScreen";
 import WinnerScreen from "./components/WinnerScreen";
 import Timer from "./components/Timer";
-import { getQuestDurationSeconds, getQuestStartAtMs } from "./utils/questTiming.js";
+import { gameApi } from "./services/gameApi";
+import {
+  getQuestDurationSeconds,
+  getQuestStartAtMs,
+} from "./utils/questTiming.js";
 
-const GAME_API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const GAME_API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const PLAYER_SESSION_KEY = "treasurehunt_player_session";
 
 const toRoman = (num) => {
-  const romans = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV"];
+  const romans = [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V",
+    "VI",
+    "VII",
+    "VIII",
+    "IX",
+    "X",
+    "XI",
+    "XII",
+    "XIII",
+    "XIV",
+    "XV",
+  ];
   return romans[num - 1] || String(num);
 };
 
@@ -25,12 +46,15 @@ const mapQuestionToRiddle = (question, index, total) => {
   return {
     id: question.id,
     num: step,
-    icon: ["📜", "🧩", "⚙️", "🔮", "💎", "🧭", "🏺", "🗝️", "📦", "🧠"][(step - 1) % 10],
+    icon: ["📜", "🧩", "⚙️", "🔮", "💎", "🧭", "🏺", "🗝️", "📦", "🧠"][
+      (step - 1) % 10
+    ],
     title: question.title || `Riddle ${toRoman(step)}`,
     stage: `STAGE ${step} OF ${total}`,
     difficulty: safeDifficulty,
     riddle: question.riddleText || "Decode the challenge and unlock the path.",
-    problem: question.problemStatement || "Solve the coding problem to proceed.",
+    problem:
+      question.problemStatement || "Solve the coding problem to proceed.",
     prevNum: Math.max(0, step - 1),
   };
 };
@@ -44,7 +68,14 @@ const App = () => {
   const [isSolvedRiddle, setIsSolvedRiddle] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(3600);
   const [isTimeExpired, setIsTimeExpired] = useState(false);
-  const [userDetails, setUserDetails] = useState({ id: "", email: "", name: "", score: 0, currentLevel: 1, completedLevels: [] });
+  const [userDetails, setUserDetails] = useState({
+    id: "",
+    email: "",
+    name: "",
+    score: 0,
+    currentLevel: 1,
+    completedLevels: [],
+  });
   const [quests, setQuests] = useState([]);
   const [selectedQuestId, setSelectedQuestId] = useState("");
   const [questions, setQuestions] = useState([]);
@@ -71,7 +102,9 @@ const App = () => {
           name: parsed.name,
           score: Number(parsed.score) || 0,
           currentLevel: Number(parsed.currentLevel) || 1,
-          completedLevels: Array.isArray(parsed.completedLevels) ? parsed.completedLevels : []
+          completedLevels: Array.isArray(parsed.completedLevels)
+            ? parsed.completedLevels
+            : [],
         });
         setCurrentScreen("screen-quest");
       }
@@ -89,7 +122,10 @@ const App = () => {
         const questList = Array.isArray(data) ? data : [];
         setQuests(questList);
         setSelectedQuestId((currentSelected) => {
-          if (currentSelected && questList.some((quest) => quest.id === currentSelected)) {
+          if (
+            currentSelected &&
+            questList.some((quest) => quest.id === currentSelected)
+          ) {
             return currentSelected;
           }
 
@@ -105,7 +141,7 @@ const App = () => {
     fetchQuests();
 
     const socket = io(GAME_API_BASE, {
-      transports: ["websocket"]
+      transports: ["websocket"],
     });
 
     const syncQuestList = (payload = {}) => {
@@ -126,12 +162,19 @@ const App = () => {
 
       if (payload.quest) {
         setQuests((prev) => {
-          const next = [...prev.filter((quest) => quest.id !== payload.quest.id), payload.quest];
-          next.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+          const next = [
+            ...prev.filter((quest) => quest.id !== payload.quest.id),
+            payload.quest,
+          ];
+          next.sort((a, b) =>
+            String(a.name || "").localeCompare(String(b.name || "")),
+          );
           return next;
         });
 
-        setSelectedQuestId((currentSelected) => currentSelected || payload.quest.id);
+        setSelectedQuestId(
+          (currentSelected) => currentSelected || payload.quest.id,
+        );
       }
     };
 
@@ -188,23 +231,34 @@ const App = () => {
       const payload = await response.json();
 
       if (!response.ok) {
-        setLoginError(payload?.error || "Login failed. Please check your details.");
+        setLoginError(
+          payload?.error || "Login failed. Please check your details.",
+        );
         setIsLoggingIn(false);
         return;
       }
 
       const player = payload?.player || {};
+      const token = payload?.token || payload?.accessToken || "";
       const nextUser = {
         id: player.id || "",
         email: player.email || email,
         name: player.name || "",
         score: Number(player.score) || 0,
         currentLevel: Number(player.currentLevel) || 1,
-        completedLevels: Array.isArray(player.completedLevels) ? player.completedLevels : []
+        completedLevels: Array.isArray(player.completedLevels)
+          ? player.completedLevels
+          : [],
       };
 
       setUserDetails(nextUser);
       localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(nextUser));
+
+      // Save player token for API calls
+      if (token) {
+        localStorage.setItem("player_token", token);
+      }
+
       setQuestError("");
       setShouldShowProfileModal(true);
       goScreen("screen-quest");
@@ -217,7 +271,8 @@ const App = () => {
 
   const launchSelectedQuest = async (questId) => {
     const questToLaunch = questId || selectedQuestId;
-    const questMeta = quests.find((quest) => quest.id === questToLaunch) || null;
+    const questMeta =
+      quests.find((quest) => quest.id === questToLaunch) || null;
 
     if (!questToLaunch) {
       setQuestError("Please select a quest before starting.");
@@ -225,7 +280,9 @@ const App = () => {
     }
 
     if (!questMeta) {
-      setQuestError("Selected quest is no longer available. Please choose another quest.");
+      setQuestError(
+        "Selected quest is no longer available. Please choose another quest.",
+      );
       return;
     }
 
@@ -237,7 +294,7 @@ const App = () => {
     if (!isLive) {
       setQuestLockNotice({
         questName: questMeta.name || "Selected quest",
-        startAtMs
+        startAtMs,
       });
       return;
     }
@@ -252,12 +309,18 @@ const App = () => {
     setQuestError("");
 
     try {
-      const response = await fetch(`${GAME_API_BASE}/game/quests/${questToLaunch}/questions`);
+      const response = await fetch(
+        `${GAME_API_BASE}/game/quests/${questToLaunch}/questions`,
+      );
       const payload = await response.json();
-      const questionList = Array.isArray(payload?.questions) ? payload.questions : [];
+      const questionList = Array.isArray(payload?.questions)
+        ? payload.questions
+        : [];
 
       if (questionList.length === 0) {
-        setQuestError("Selected quest has no questions yet. Ask admin to add questions.");
+        setQuestError(
+          "Selected quest has no questions yet. Ask admin to add questions.",
+        );
         setIsLaunchingQuest(false);
         return;
       }
@@ -280,28 +343,69 @@ const App = () => {
     goScreen("screen-map");
   };
 
-  const openRiddle = (riddleNum, isSolved = false) => {
+  const openRiddle = async (riddleNum, isSolved = false) => {
     const question = questions[riddleNum - 1];
     if (!question) return;
 
-    const riddle = mapQuestionToRiddle(question, riddleNum - 1, questions.length);
+    // Start timer for this question
+    try {
+      await gameApi.startQuestionTimer(
+        userDetails.id,
+        question.level || riddleNum,
+        selectedQuestId,
+        localStorage.getItem("player_token"),
+      );
+    } catch (error) {
+      console.error("Failed to start question timer:", error);
+    }
+
+    const riddle = mapQuestionToRiddle(
+      question,
+      riddleNum - 1,
+      questions.length,
+    );
     setCurrentRiddle(riddle);
     setIsSolvedRiddle(isSolved);
     setActiveRiddle(riddleNum);
     goScreen("screen-riddle");
   };
 
-  const submitRiddleKey = (key) => {
+  const submitRiddleKey = async (key) => {
     if (String(key || "").trim().length > 0) {
-      // Correct!
-      setSolvedCount((prev) => prev + 1);
+      try {
+        // Get current question details
+        const currentQuestion = questions[activeRiddle - 1];
+        if (!currentQuestion) return;
 
-      if (activeRiddle >= questions.length) {
-        // Winner!
-        showWinner();
-      } else {
-        setActiveRiddle((prev) => prev + 1);
-        goScreen("screen-map");
+        // Update user progress in backend
+        await gameApi.updateProgress(
+          userDetails.id,
+          currentQuestion.level || activeRiddle,
+          20, // Fixed 20 points per level
+          localStorage.getItem("player_token"),
+        );
+
+        // Update local state
+        setSolvedCount((prev) => prev + 1);
+
+        if (activeRiddle >= questions.length) {
+          // Winner!
+          showWinner();
+        } else {
+          setActiveRiddle((prev) => prev + 1);
+          goScreen("screen-map");
+        }
+      } catch (error) {
+        console.error("Failed to update progress:", error);
+        // Continue with local state even if backend fails
+        setSolvedCount((prev) => prev + 1);
+
+        if (activeRiddle >= questions.length) {
+          showWinner();
+        } else {
+          setActiveRiddle((prev) => prev + 1);
+          goScreen("screen-map");
+        }
       }
     } else {
       // Show error (would need to implement error handling in RiddleScreen)
@@ -337,7 +441,14 @@ const App = () => {
 
   const handleLogout = () => {
     localStorage.removeItem(PLAYER_SESSION_KEY);
-    setUserDetails({ id: "", email: "", name: "", score: 0, currentLevel: 1, completedLevels: [] });
+    setUserDetails({
+      id: "",
+      email: "",
+      name: "",
+      score: 0,
+      currentLevel: 1,
+      completedLevels: [],
+    });
     setSelectedQuestId("");
     setQuestions([]);
     setSolvedCount(0);
