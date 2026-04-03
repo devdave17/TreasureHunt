@@ -28,6 +28,7 @@ function Questions({ authToken }) {
     riddleText: "",
     problemStatement: "",
     correctAnswer: "",
+    score: "10",
     difficulty: "Medium"
   })
 
@@ -96,8 +97,8 @@ function Questions({ authToken }) {
       return
     }
 
-    if (!formData.level || !formData.title || !formData.correctAnswer) {
-      setError("Level, Title, and Correct Answer are required")
+    if (!formData.level || !formData.title || !formData.correctAnswer || !formData.score) {
+      setError("Level, Title, Correct Answer, and Score are required")
       return
     }
 
@@ -138,6 +139,7 @@ function Questions({ authToken }) {
       riddleText: question.riddleText || "",
       problemStatement: question.problemStatement || "",
       correctAnswer: question.correctAnswer || "",
+      score: String(Number(question.score) || 10),
       difficulty: question.difficulty || "Medium"
     })
   }
@@ -169,6 +171,7 @@ function Questions({ authToken }) {
       riddleText: "",
       problemStatement: "",
       correctAnswer: "",
+      score: "10",
       difficulty: "Medium"
     })
     setEditingId(null)
@@ -276,6 +279,21 @@ function Questions({ authToken }) {
                     <option>Hard</option>
                   </select>
                 </div>
+
+                <div className="form-group">
+                  <label htmlFor="score">Score *</label>
+                  <input
+                    id="score"
+                    type="number"
+                    name="score"
+                    min="1"
+                    step="1"
+                    value={formData.score}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 10"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="form-group">
@@ -352,6 +370,7 @@ function Questions({ authToken }) {
                     <h4>{question.title}</h4>
                     <div className="question-meta">
                       <span className="badge badge-level">Level {question.level}</span>
+                      <span className="badge badge-level">Score {Number(question.score) || 10}</span>
                       <span className={`badge badge-difficulty badge-${question.difficulty?.toLowerCase()}`}>
                         {question.difficulty}
                       </span>

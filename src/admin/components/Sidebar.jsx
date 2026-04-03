@@ -11,6 +11,7 @@ function Sidebar({ activeTab, onTabChange, onLogout, role }) {
         { id: "users", label: "Users", icon: "👥" },
         { id: "quests", label: "Quests", icon: "🗓️" },
         { id: "questions", label: "Questions", icon: "❓" },
+        { id: "rankings", label: "Rankings", icon: "🏁" },
         { id: "stats", label: "Stats", icon: "📈" }
       ]
 

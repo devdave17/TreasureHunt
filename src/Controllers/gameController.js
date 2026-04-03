@@ -3,13 +3,13 @@ import {
   normalizeQuestSchedule,
   getQuestStartAtMs,
 } from "../utils/questTiming.js";
+import process from "node:process";
+import dotenv from "dotenv";
+
+dotenv.config({ override: true });
 
 const normalizeEmail = (email) =>
   String(email || "")
-    .trim()
-    .toLowerCase();
-const normalizeName = (name) =>
-  String(name || "")
     .trim()
     .toLowerCase();
 
@@ -19,10 +19,95 @@ const sortQuestions = (questions) => {
     const bLevel = Number(b.level) || 0;
     if (aLevel !== bLevel) return aLevel - bLevel;
 
-    const aTime = a.createdAt?._seconds || 0;
-    const bTime = b.createdAt?._seconds || 0;
+    const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : a.createdAt?._seconds || 0;
+    const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : b.createdAt?._seconds || 0;
     return aTime - bTime;
   });
+};
+
+const normalizeAnswer = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+const buildQuestProgressId = (userId, questId) =>
+  `${String(userId || "").trim()}_${String(questId || "").trim()}`;
+
+const getQuestProgressDocRef = (userId, questId) => {
+  const progressId = buildQuestProgressId(userId, questId);
+  return db.collection(dbConfig.COLLECTIONS.QUEST_PROGRESS).doc(progressId);
+};
+
+const normalizeTimestampLike = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsedDate = Date.parse(value);
+    if (!Number.isNaN(parsedDate)) {
+      return parsedDate;
+    }
+  }
+
+  if (typeof value === "object") {
+    if (value instanceof Date) {
+      return Math.floor(value.getTime());
+    }
+
+    if (typeof value.toMillis === "function") {
+      const millis = Number(value.toMillis());
+      if (Number.isFinite(millis)) {
+        return Math.floor(millis);
+      }
+    }
+
+    if (Number.isFinite(Number(value.seconds))) {
+      return Math.floor(Number(value.seconds) * 1000);
+    }
+
+    if (Number.isFinite(Number(value._seconds))) {
+      return Math.floor(Number(value._seconds) * 1000);
+    }
+  }
+
+  return null;
+};
+
+const getQuestElapsedSeconds = (progress = {}) => {
+  const questStartMs = normalizeTimestampLike(progress.questStartTime);
+  if (!Number.isFinite(questStartMs)) {
+    return null;
+  }
+
+  const lastActiveMs =
+    normalizeTimestampLike(progress.lastActive) ||
+    normalizeTimestampLike(progress.updatedAt) ||
+    questStartMs;
+
+  return Math.max(0, Math.floor((lastActiveMs - questStartMs) / 1000));
+};
+
+const sumQuestionCompletionSeconds = (questionCompletionSeconds) => {
+  if (!questionCompletionSeconds || typeof questionCompletionSeconds !== "object") {
+    return null;
+  }
+
+  const total = Object.values(questionCompletionSeconds).reduce((accumulator, value) => {
+    const seconds = Number(value);
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return accumulator;
+    }
+
+    return accumulator + seconds;
+  }, 0);
+
+  return total;
 };
 
 export const loginPlayer = async (req, res) => {
@@ -147,6 +232,7 @@ export const getPublicQuestQuestions = async (req, res) => {
       riddleText: question.riddleText || "",
       problemStatement: question.problemStatement || "",
       difficulty: question.difficulty || "Medium",
+      score: Number(question.score) || 10,
       level: Number(question.level) || index + 1,
       order: index + 1,
     }));
@@ -167,60 +253,237 @@ export const getPublicQuestQuestions = async (req, res) => {
   }
 };
 
+export const getQuestRanking = async (req, res) => {
+  try {
+    const { questId } = req.params;
+
+    if (!questId) {
+      return res.status(400).json({ error: "questId is required" });
+    }
+
+    const questDoc = await db
+      .collection(dbConfig.COLLECTIONS.QUESTS)
+      .doc(String(questId))
+      .get();
+
+    if (!questDoc.exists) {
+      return res.status(404).json({ error: "Quest not found" });
+    }
+
+    const questData = questDoc.data() || {};
+    const progressSnapshot = await db
+      .collection(dbConfig.COLLECTIONS.QUEST_PROGRESS)
+      .where("questId", "==", String(questId))
+      .get();
+
+    const progressRows = progressSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    const userIds = [...new Set(
+      progressRows
+        .map((row) => String(row.userId || "").trim())
+        .filter(Boolean),
+    )];
+
+    const userMap = new Map();
+    if (userIds.length > 0) {
+      const userSnapshot = await db
+        .collection(dbConfig.COLLECTIONS.USERS)
+        .where("_id", "in", userIds)
+        .get();
+
+      userSnapshot.docs.forEach((doc) => {
+        userMap.set(String(doc.id), doc.data() || {});
+      });
+    }
+
+    const rankings = progressRows
+      .map((progress) => {
+        const completedQuestionLevels = Array.isArray(progress.completedQuestionLevels)
+          ? progress.completedQuestionLevels
+          : [];
+        const normalizedCompletedLevels = completedQuestionLevels
+          .map((entry) => {
+            if (entry && typeof entry === "object") {
+              return Number(entry.questionLevel || entry.level || entry.currentLevel)
+            }
+
+            return Number(entry)
+          })
+          .filter((level) => Number.isFinite(level))
+          .sort((a, b) => a - b);
+        const totalScore = Number(progress.totalScore) || Number(progress.score) || 0;
+        const elapsedSeconds = getQuestElapsedSeconds(progress);
+        const userData = userMap.get(String(progress.userId || "").trim()) || {};
+        const questionCompletionSeconds =
+          progress.questionCompletionSeconds && typeof progress.questionCompletionSeconds === "object"
+            ? progress.questionCompletionSeconds
+            : {};
+        const totalSolveSeconds = sumQuestionCompletionSeconds(questionCompletionSeconds);
+
+        return {
+          userId: String(progress.userId || ""),
+          name: String(userData.name || progress.playerName || "Unknown player"),
+          email: String(userData.email || progress.playerEmail || ""),
+          progressId: progress.id,
+          totalScore,
+          solvedQuestions: normalizedCompletedLevels.length,
+          totalCompletionSeconds:
+            Number.isFinite(totalSolveSeconds) && totalSolveSeconds >= 0
+              ? totalSolveSeconds
+              : elapsedSeconds,
+          totalElapsedSeconds: elapsedSeconds,
+          currentLevel: Number(progress.currentLevel) || Number(progress.currentQuestionLevel) || 0,
+          completedQuestionLevels: normalizedCompletedLevels,
+          questionCompletionSeconds,
+          questStartTime: progress.questStartTime || null,
+          questionStartTime: progress.questionStartTime || null,
+          lastActive: progress.lastActive || progress.updatedAt || null,
+          progressUpdatedAt: progress.updatedAt || null,
+        };
+      })
+      .sort((a, b) => {
+        if (b.totalScore !== a.totalScore) {
+          return b.totalScore - a.totalScore;
+        }
+
+        if (b.solvedQuestions !== a.solvedQuestions) {
+          return b.solvedQuestions - a.solvedQuestions;
+        }
+
+        const aTime = Number.isFinite(a.totalCompletionSeconds)
+          ? a.totalCompletionSeconds
+          : Number.POSITIVE_INFINITY;
+        const bTime = Number.isFinite(b.totalCompletionSeconds)
+          ? b.totalCompletionSeconds
+          : Number.POSITIVE_INFINITY;
+
+        if (aTime !== bTime) {
+          return aTime - bTime;
+        }
+
+        const aUpdated = normalizeTimestampLike(a.lastActive) || 0;
+        const bUpdated = normalizeTimestampLike(b.lastActive) || 0;
+        return aUpdated - bUpdated;
+      })
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
+
+    const questionSnapshot = await db
+      .collection(dbConfig.COLLECTIONS.QUESTIONS)
+      .where("questId", "==", String(questId))
+      .get();
+
+    res.json({
+      quest: {
+        id: questDoc.id,
+        name: questData.name || "Untitled Quest",
+        code: questData.code || "",
+        description: questData.description || "",
+        ...normalizeQuestSchedule(questData),
+        totalQuestions: questionSnapshot.size,
+      },
+      summary: {
+        participantCount: rankings.length,
+        completedCount: rankings.filter((row) => row.solvedQuestions > 0).length,
+      },
+      rankings,
+    });
+  } catch (error) {
+    console.error("Error fetching quest ranking:", error);
+    res.status(500).json({ error: "Failed to fetch ranking" });
+  }
+};
+
 export const updatePlayerProgress = async (req, res) => {
   try {
-    const { userId, level, points } = req.body || {};
+    const { userId, questId, questionId, level, points } = req.body || {};
 
-    if (!userId || !level) {
-      return res.status(400).json({ error: "userId and level are required" });
+    console.log("[updatePlayerProgress] request", {
+      userId,
+      questId,
+      questionId,
+      level,
+      points,
+    });
+
+    if (!userId || !questId || !level) {
+      return res.status(400).json({ error: "userId, questId and level are required" });
     }
 
-    const userDoc = await db
-      .collection(dbConfig.COLLECTIONS.USERS)
-      .doc(String(userId))
-      .get();
-    if (!userDoc.exists) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const userData = userDoc.data();
-    const currentScore = Number(userData.score) || 0;
-    const currentLevel = Number(userData.currentLevel) || 1;
-    const completedLevels = Array.isArray(userData.completedLevels)
-      ? userData.completedLevels
-      : [];
-
-    // Calculate duration by subtracting questStartTime from current completion time
-    const questStartTime = userData.questStartTime || new Date();
     const currentCompletedAt = new Date();
-    const durationDiffMs = currentCompletedAt - questStartTime;
-    const durationMinutes = Math.round(durationDiffMs / 60000); // Convert to minutes
+    const parsedLevel = Number(level) || 1;
+    const questDoc = await db
+      .collection(dbConfig.COLLECTIONS.QUESTS)
+      .doc(String(questId))
+      .get();
+    const questData = questDoc.exists ? questDoc.data() || {} : {};
 
-    const updatedData = {
-      ...userData,
-      score: currentScore + 20, // Fixed 20 points per question
-      currentLevel: Math.max(currentLevel, Number(level)),
-      completedLevels: [
-        ...completedLevels,
+    const questProgressRef = getQuestProgressDocRef(userId, questId);
+    console.log("[updatePlayerProgress] questProgress doc", {
+      docId: questProgressRef.id,
+      path: questProgressRef.path,
+    });
+    const questProgressSnap = await questProgressRef.get();
+    const questProgressData = questProgressSnap.exists ? questProgressSnap.data() || {} : {};
+    const questStartTime = questProgressData.questStartTime || new Date();
+    const currentScore = Number(questProgressData.totalScore) || Number(questProgressData.score) || 0;
+    const completedQuestionLevels = Array.isArray(questProgressData.completedQuestionLevels)
+      ? questProgressData.completedQuestionLevels
+      : [];
+    const questionStartTime = questProgressData.questionStartTime || currentCompletedAt;
+    const durationDiffMs = currentCompletedAt - questStartTime;
+    const durationMinutes = Math.round(durationDiffMs / 60000);
+    const completionSeconds = Math.max(0, Math.floor((currentCompletedAt - questionStartTime) / 1000));
+    const pointsValue = Number(points) || 10;
+    const questionCompletionSeconds = Array.isArray(questProgressData.questionCompletionSeconds)
+      ? [...questProgressData.questionCompletionSeconds]
+      : [];
+    questionCompletionSeconds[Math.max(parsedLevel - 1, 0)] = completionSeconds;
+
+    const updatedProgress = {
+      userId: String(userId),
+      questId: String(questId),
+      questName: String(questProgressData.questName || questData.name || ""),
+      score: currentScore + pointsValue,
+      totalScore: currentScore + pointsValue,
+      currentQuestionLevel: parsedLevel,
+      currentLevel: parsedLevel,
+      questionCompletionSeconds,
+      completedQuestionLevels: [
+        ...completedQuestionLevels,
         {
-          questionLevel: Number(level),
-          completedAt: currentCompletedAt, // Store actual completion time
-          points: 20,
+          questionId: questionId || "",
+          questionLevel: parsedLevel,
+          completedAt: currentCompletedAt,
+          points: pointsValue,
+          completionSeconds,
         },
       ],
-      questionStartTime: new Date(), // Reset start time for next question
-      questDurationMinutes: durationMinutes, // Store duration from quest start
-      lastActive: new Date(),
+      questStartTime,
+      questionStartTime: currentCompletedAt,
+      questDurationMinutes: durationMinutes,
+      lastActive: currentCompletedAt,
+      updatedAt: currentCompletedAt,
     };
 
-    await db
-      .collection(dbConfig.COLLECTIONS.USERS)
-      .doc(String(userId))
-      .update(updatedData);
+    await questProgressRef.set(updatedProgress, { merge: true });
+
+    console.log("[updatePlayerProgress] saved", {
+      docId: questProgressRef.id,
+      questId,
+      userId,
+      currentQuestionLevel: updatedProgress.currentQuestionLevel,
+      score: updatedProgress.score,
+    });
 
     res.json({
       message: "Progress updated successfully",
-      user: updatedData,
+      progress: updatedProgress,
     });
   } catch (error) {
     console.error("Error updating player progress:", error);
@@ -232,22 +495,19 @@ export const startQuestionTimer = async (req, res) => {
   try {
     const { userId, level, questId } = req.body || {};
 
-    if (!userId || !level) {
-      return res.status(400).json({ error: "userId and level are required" });
-    }
+    console.log("[startQuestionTimer] request", {
+      userId,
+      level,
+      questId,
+    });
 
-    const userDoc = await db
-      .collection(dbConfig.COLLECTIONS.USERS)
-      .doc(String(userId))
-      .get();
-    if (!userDoc.exists) {
-      return res.status(404).json({ error: "User not found" });
+    if (!userId || !level || !questId) {
+      return res.status(400).json({ error: "userId, level and questId are required" });
     }
-
-    const userData = userDoc.data();
 
     // Get quest duration if questId is provided
     let questDurationMinutes = 60; // Default 60 minutes
+    let questName = "";
     if (questId) {
       try {
         const questDoc = await db
@@ -257,33 +517,166 @@ export const startQuestionTimer = async (req, res) => {
         if (questDoc.exists) {
           const questData = questDoc.data();
           questDurationMinutes = Number(questData.durationMinutes) || 60;
+          questName = String(questData.name || "");
         }
       } catch (error) {
         console.error("Error fetching quest duration:", error);
       }
     }
 
-    // Update question start time and set quest start time if this is the first question
-    const isFirstQuestion = !userData.questStartTime;
-    await db
-      .collection(dbConfig.COLLECTIONS.USERS)
-      .doc(String(userId))
-      .update({
-        ...userData,
-        questionStartTime: new Date(),
-        questStartTime: isFirstQuestion ? new Date() : userData.questStartTime,
-        currentQuestionLevel: Number(level),
-        questDurationMinutes: questDurationMinutes,
-        lastActive: new Date(),
+    const questProgressRef = getQuestProgressDocRef(userId, questId);
+    console.log("[startQuestionTimer] questProgress doc", {
+      docId: questProgressRef.id,
+      path: questProgressRef.path,
+    });
+    const questProgressSnap = await questProgressRef.get();
+    const questProgressData = questProgressSnap.exists ? questProgressSnap.data() || {} : {};
+    const now = new Date();
+
+    if (questProgressData.questStartTime) {
+      return res.json({
+        message: "Question timer already initialized",
+        startTime: questProgressData.questionStartTime || questProgressData.questStartTime,
+        questDurationMinutes,
+        questProgress: questProgressData,
       });
+    }
+
+    const questProgress = {
+      userId: String(userId),
+      questId: String(questId),
+      questName: String(questProgressData.questName || questName || ""),
+      questionStartTime: now,
+      questStartTime: now,
+      currentQuestionLevel: Number(level),
+      currentLevel: Number(level),
+      totalScore: Number(questProgressData.totalScore) || Number(questProgressData.score) || 0,
+      questionCompletionSeconds: Array.isArray(questProgressData.questionCompletionSeconds)
+        ? questProgressData.questionCompletionSeconds
+        : [],
+      questDurationMinutes,
+      lastActive: now,
+      updatedAt: now,
+    };
+
+    await questProgressRef.set(questProgress, { merge: true });
+
+    console.log("[startQuestionTimer] saved", {
+      docId: questProgressRef.id,
+      questId,
+      userId,
+      questStartTime: questProgress.questStartTime,
+      questDurationMinutes,
+    });
 
     res.json({
       message: "Question timer started",
-      startTime: new Date(),
-      questDurationMinutes: questDurationMinutes,
+      startTime: now,
+      questDurationMinutes,
+      questProgress,
     });
   } catch (error) {
     console.error("Error starting question timer:", error);
     res.status(500).json({ error: "Failed to start timer" });
+  }
+};
+
+export const getUserProgress = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { questId } = req.query || {};
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    if (questId) {
+      const progressSnap = await getQuestProgressDocRef(userId, questId).get();
+      if (!progressSnap.exists) {
+        return res.json({ progress: null });
+      }
+
+      return res.json({
+        progress: {
+          id: progressSnap.id,
+          ...progressSnap.data(),
+        },
+      });
+    }
+
+    const snapshot = await db
+      .collection(dbConfig.COLLECTIONS.QUEST_PROGRESS)
+      .where("userId", "==", String(userId))
+      .get();
+
+    const progresses = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return res.json({ progresses });
+  } catch (error) {
+    console.error("Error fetching user progress:", error);
+    return res.status(500).json({ error: "Failed to get progress" });
+  }
+};
+
+export const validateQuestAnswer = async (req, res) => {
+  try {
+    const { questId, questionId } = req.params;
+    const { answer } = req.body || {};
+
+    console.log("[validateQuestAnswer] request", {
+      questId,
+      questionId,
+      answer,
+    });
+
+    if (!questId || !questionId) {
+      return res.status(400).json({ error: "questId and questionId are required" });
+    }
+
+    const normalizedInput = normalizeAnswer(answer);
+    if (!normalizedInput) {
+      return res.status(400).json({ error: "Answer is required" });
+    }
+
+    const questionDoc = await db
+      .collection(dbConfig.COLLECTIONS.QUESTIONS)
+      .doc(String(questionId))
+      .get();
+
+    if (!questionDoc.exists) {
+      return res.status(404).json({ error: "Question not found" });
+    }
+
+    const question = questionDoc.data() || {};
+    if (String(question.questId || "") !== String(questId)) {
+      return res.status(400).json({ error: "Question does not belong to selected quest" });
+    }
+
+    const normalizedCorrect = normalizeAnswer(question.correctAnswer);
+    const isCorrect = normalizedInput === normalizedCorrect;
+
+    console.log("[validateQuestAnswer] result", {
+      questId,
+      questionId,
+      normalizedInput,
+      normalizedCorrect,
+      isCorrect,
+    });
+
+    return res.json({
+      isCorrect,
+      message: isCorrect ? "Correct answer" : "Incorrect answer",
+      question: {
+        id: questionDoc.id,
+        level: Number(question.level) || null,
+        title: question.title || "",
+      },
+    });
+  } catch (error) {
+    console.error("Error validating quest answer:", error);
+    return res.status(500).json({ error: "Failed to validate answer" });
   }
 };

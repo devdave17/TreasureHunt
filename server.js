@@ -5,13 +5,12 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { createServer } from "http"
 import { Server as SocketIOServer } from "socket.io"
+import process from "node:process"
 
 import adminRoutes from "./src/routes/adminRoutes.js"
 import gameRoutes from "./src/routes/gameRoutes.js"
 import { adminAuth } from "./src/backend/middleware/adminAuth.js"
 import { loginAdmin } from "./src/Controllers/adminAuthController.js"
-import { db } from "./src/backend/database/dbConfig.js"
-import { normalizeQuestSchedule } from "./src/utils/questTiming.js"
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5001
@@ -55,37 +54,6 @@ app.use(express.static(path.join(__dirname, "dist")))
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"))
 })
-
-let isQuestListenerReady = false
-db.collection("quests").onSnapshot(
-  (snapshot) => {
-    if (!isQuestListenerReady) {
-      isQuestListenerReady = true
-      return
-    }
-
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === "removed") {
-        io.emit("quest-changed", {
-          action: "deleted",
-          questId: change.doc.id
-        })
-        return
-      }
-
-      io.emit("quest-changed", {
-        action: change.type === "added" ? "created" : "updated",
-        quest: {
-          id: change.doc.id,
-          ...normalizeQuestSchedule(change.doc.data() || {})
-        }
-      })
-    })
-  },
-  (error) => {
-    console.error("Quest realtime listener failed:", error)
-  }
-)
 
 // 👇 last me server start
 httpServer.listen(PORT, () => {

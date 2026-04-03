@@ -2,18 +2,16 @@ import React from "react";
 
 const WinnerScreen = ({
   onReset,
-  startTime,
   isTimeExpired,
-  timeRemaining,
+  finalElapsedSeconds,
   userDetails,
   solvedCount,
   totalRiddles = 0,
 }) => {
-  const formatTime = (startTime) => {
-    if (!startTime) return "--:--";
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
-    const secs = String(elapsed % 60).padStart(2, "0");
+  const formatElapsedSeconds = (elapsedSeconds) => {
+    if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < 0) return "--:--";
+    const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
+    const secs = String(elapsedSeconds % 60).padStart(2, "0");
     return `${mins}:${secs}`;
   };
 
@@ -82,7 +80,7 @@ const WinnerScreen = ({
         </div>
         <div className="stat-box">
           <div className="stat-val">
-            {isTimeExpired ? "00:00" : formatTime(startTime)}
+            {isTimeExpired ? "00:00" : formatElapsedSeconds(finalElapsedSeconds)}
           </div>
           <div className="stat-key">Time Elapsed</div>
         </div>
@@ -91,7 +89,7 @@ const WinnerScreen = ({
           <div className="stat-key">Status</div>
         </div>
       </div>
-      <div className="btn-group" style={{ justifyContent: "center" }}>
+      <div className="btn-group" style={{ justifyContent: "center", gap: "1rem" }}>
         <button className="btn-primary" onClick={onReset}>
           🔄 &nbsp;Play Again
         </button>

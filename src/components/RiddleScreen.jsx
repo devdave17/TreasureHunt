@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const RiddleScreen = ({ riddle, onSubmit, onBack, isSolved }) => {
+const RiddleScreen = ({
+  riddle,
+  onSubmit,
+  onBack,
+  isSolved,
+  submissionError = "",
+  isSubmitting = false,
+}) => {
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
@@ -9,13 +16,17 @@ const RiddleScreen = ({ riddle, onSubmit, onBack, isSolved }) => {
     setTimeout(() => inputRef.current?.focus(), 300);
   }, [riddle]);
 
+  useEffect(() => {
+    setKey("");
+    setError("");
+  }, [riddle?.id]);
+
   const handleSubmit = () => {
     const trimmedKey = key.trim().toUpperCase();
-    if (trimmedKey.length < 2) {
+    if (trimmedKey.length === 0) {
       setError("Please enter your program's output key.");
       return;
     }
-    setKey("");
     onSubmit(trimmedKey);
   };
 
@@ -80,10 +91,10 @@ const RiddleScreen = ({ riddle, onSubmit, onBack, isSolved }) => {
               # Output from Problem {riddle.prevNum} → unlocks next riddle
             </div>
           </div>
-          <div className="error-msg">{error}</div>
+          <div className="error-msg">{error || submissionError}</div>
           <div className="btn-group">
-            <button className="btn-primary" onClick={handleSubmit}>
-              🔓 &nbsp;Submit Key
+            <button className="btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "⏳ Validating..." : "🔓  Submit Key"}
             </button>
             <button className="btn-secondary" onClick={onBack}>
               ← Back to Map

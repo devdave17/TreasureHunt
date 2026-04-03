@@ -1,6 +1,5 @@
 import "dotenv/config"
 import { db } from "../src/backend/database/dbConfig.js"
-import admin from "../src/backend/firebase/firebaseConfig.js"
 
 const DEFAULT_DURATION_MINUTES = 60
 
@@ -71,7 +70,7 @@ const run = async () => {
     batch.update(doc.ref, {
       durationMinutes,
       startAtMs,
-      startAt: admin.firestore.Timestamp.fromMillis(startAtMs),
+      startAt: new Date(startAtMs),
       updatedAt: new Date()
     })
 

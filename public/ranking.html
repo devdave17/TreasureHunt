@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quest Leaderboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .ranking-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .ranking-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .ranking-header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .ranking-header p {
+      font-size: 1.1em;
+      opacity: 0.95;
+      margin-bottom: 20px;
+    }
+
+    .ranking-stats {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .stat-pill {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.95em;
+      backdrop-filter: blur(10px);
+    }
+
+    .ranking-body {
+      padding: 30px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #667eea;
+      font-size: 1.2em;
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .ranking-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .ranking-table thead {
+      background: #f8f9ff;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .ranking-table th {
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+      color: #333;
+      text-transform: uppercase;
+      font-size: 0.85em;
+      letter-spacing: 0.5px;
+    }
+
+    .ranking-table td {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+      color: #555;
+    }
+
+    .ranking-table tbody tr:hover {
+      background: #f8f9ff;
+    }
+
+    .rank-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      text-align: center;
+      font-size: 0.9em;
+    }
+
+    .rank-badge.gold {
+      background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+      color: #333;
+    }
+
+    .rank-badge.silver {
+      background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+      color: #333;
+    }
+
+    .rank-badge.bronze {
+      background: linear-gradient(135deg, #cd7f32 0%, #e5a76d 100%);
+      color: white;
+    }
+
+    .player-name {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .player-email {
+      font-size: 0.85em;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .score {
+      font-weight: bold;
+      color: #667eea;
+      font-size: 1.1em;
+    }
+
+    .time-badge {
+      background: #f0f0f0;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state svg {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .back-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .back-link a:hover {
+      color: #764ba2;
+      text-decoration: underline;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    @media (max-width: 768px) {
+      .ranking-header h1 {
+        font-size: 1.8em;
+      }
+
+      .ranking-table th,
+      .ranking-table td {
+        padding: 10px;
+        font-size: 0.9em;
+      }
+
+      .ranking-stats {
+        gap: 10px;
+      }
+
+      .stat-pill {
+        font-size: 0.85em;
+        padding: 6px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ranking-container">
+    <div class="ranking-header">
+      <h1 id="quest-title">Quest Leaderboard</h1>
+      <p id="quest-description">Live rankings - Updated in real-time</p>
+      <div class="ranking-stats" id="ranking-stats"></div>
+    </div>
+
+    <div class="ranking-body">
+      <div id="loading" class="loading">
+        Loading leaderboard...
+      </div>
+      <div id="error" class="error" style="display: none;"></div>
+      <div id="content" style="display: none;">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Name</th>
+              <th>Score</th>
+              <th>Solved</th>
+              <th>Time Taken</th>
+            </tr>
+          </thead>
+          <tbody id="ranking-tbody">
+          </tbody>
+        </table>
+        <div id="empty-state" class="empty-state" style="display: none;">
+          <p>No participants yet. Be the first to complete this quest!</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="back-link">
+      <a href="/">← Back to Game</a>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    function getQuestIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('questId') || 'quest1'; // Default fallback
+    }
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds)) return '--';
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}m ${secs}s`;
+    }
+
+    function getRankBadgeClass(rank) {
+      if (rank === 1) return 'gold';
+      if (rank === 2) return 'silver';
+      if (rank === 3) return 'bronze';
+      return '';
+    }
+
+    async function loadRanking() {
+      const questId = getQuestIdFromUrl();
+      const loadingDiv = document.getElementById('loading');
+      const errorDiv = document.getElementById('error');
+      const contentDiv = document.getElementById('content');
+      const emptyStateDiv = document.getElementById('empty-state');
+      const tbody = document.getElementById('ranking-tbody');
+
+      try {
+        const response = await fetch(`${API_BASE}/game/quests/${questId}/ranking`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Update header
+        const quest = data.quest || {};
+        const summary = data.summary || {};
+        const rankings = data.rankings || [];
+
+        document.getElementById('quest-title').textContent = quest.name || 'Quest Leaderboard';
+        document.getElementById('quest-description').textContent = quest.description || 'Live rankings - Updated in real-time';
+
+        const statsHtml = [
+          `<div class="stat-pill">👥 ${summary.participantCount || 0} Participants</div>`,
+          `<div class="stat-pill">🏆 ${summary.completedCount || 0} Completed</div>`,
+          `<div class="stat-pill">❓ ${quest.totalQuestions || 0} Questions</div>`,
+        ].join('');
+        document.getElementById('ranking-stats').innerHTML = statsHtml;
+
+        loadingDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+
+        if (rankings.length === 0) {
+          emptyStateDiv.style.display = 'block';
+          contentDiv.style.display = 'block';
+          return;
+        }
+
+        // Populate rankings table
+        tbody.innerHTML = rankings
+          .map((player, index) => {
+            const rank = index + 1;
+            const badgeClass = getRankBadgeClass(rank);
+            const playerName = player.playerName || player.name || 'Anonymous';
+            const playerEmail = player.playerEmail || player.email || '';
+            const score = player.score || 0;
+            const solvedCount = player.solvedCount || 0;
+            const totalSeconds = player.totalSeconds || 0;
+
+            return `
+              <tr>
+                <td>
+                  <div class="rank-badge ${badgeClass}">${rank}</div>
+                </td>
+                <td>
+                  <div class="player-name">${escapeHtml(playerName)}</div>
+                  ${playerEmail ? `<div class="player-email">${escapeHtml(playerEmail)}</div>` : ''}
+                </td>
+                <td><div class="score">${score}</div></td>
+                <td>${solvedCount}/${quest.totalQuestions || 0}</td>
+                <td><div class="time-badge">${formatTime(totalSeconds)}</div></td>
+              </tr>
+            `;
+          })
+          .join('');
+
+        emptyStateDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+
+      } catch (error) {
+        console.error('Failed to load ranking:', error);
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `❌ Failed to load leaderboard: ${error.message}`;
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return String(text).replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    // Load ranking when page loads
+    document.addEventListener('DOMContentLoaded', loadRanking);
+
+    // Auto-refresh every 10 seconds
+    setInterval(loadRanking, 10000);
+  </script>
+</body>
+</html>

@@ -78,6 +78,7 @@ const App = () => {
   });
   const [quests, setQuests] = useState([]);
   const [selectedQuestId, setSelectedQuestId] = useState("");
+  const [activeQuestId, setActiveQuestId] = useState("");
   const [questions, setQuestions] = useState([]);
   const [loadingQuests, setLoadingQuests] = useState(true);
   const [questError, setQuestError] = useState("");
@@ -86,6 +87,9 @@ const App = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLaunchingQuest, setIsLaunchingQuest] = useState(false);
   const [questLockNotice, setQuestLockNotice] = useState(null);
+  const [riddleSubmitError, setRiddleSubmitError] = useState("");
+  const [isSubmittingRiddle, setIsSubmittingRiddle] = useState(false);
+  const [finalElapsedSeconds, setFinalElapsedSeconds] = useState(null);
 
   const isPlayerLoggedIn = Boolean(userDetails.email && userDetails.name);
 
@@ -192,6 +196,9 @@ const App = () => {
       const timer = setInterval(() => {
         setTimeRemaining((prev) => {
           if (prev <= 1) {
+            if (startTime) {
+              setFinalElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
+            }
             setIsTimeExpired(true);
             goScreen("screen-winner");
             return 0;
@@ -325,6 +332,21 @@ const App = () => {
         return;
       }
 
+      const questIdForTimer = String(questToLaunch);
+      const firstQuestion = questionList[0];
+      if (firstQuestion) {
+        try {
+          await gameApi.startQuestionTimer(
+            userDetails.id,
+            Number(firstQuestion.level) || 1,
+            questIdForTimer,
+            localStorage.getItem("player_token"),
+          );
+        } catch (timerError) {
+          console.error("Failed to initialize first question timer:", timerError);
+        }
+      }
+
       setQuestions(questionList);
     } catch {
       setQuestError("Failed to load quest questions. Please retry.");
@@ -333,10 +355,12 @@ const App = () => {
     }
 
     setStartTime(Date.now());
+    setActiveQuestId(String(questToLaunch));
     setSolvedCount(0);
     setActiveRiddle(1);
     setTimeRemaining(questDurationSeconds);
     setIsTimeExpired(false);
+    setFinalElapsedSeconds(null);
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
     setIsLaunchingQuest(false);
@@ -347,23 +371,12 @@ const App = () => {
     const question = questions[riddleNum - 1];
     if (!question) return;
 
-    // Start timer for this question
-    try {
-      await gameApi.startQuestionTimer(
-        userDetails.id,
-        question.level || riddleNum,
-        selectedQuestId,
-        localStorage.getItem("player_token"),
-      );
-    } catch (error) {
-      console.error("Failed to start question timer:", error);
-    }
-
     const riddle = mapQuestionToRiddle(
       question,
       riddleNum - 1,
       questions.length,
     );
+    setRiddleSubmitError("");
     setCurrentRiddle(riddle);
     setIsSolvedRiddle(isSolved);
     setActiveRiddle(riddleNum);
@@ -371,51 +384,83 @@ const App = () => {
   };
 
   const submitRiddleKey = async (key) => {
-    if (String(key || "").trim().length > 0) {
-      try {
-        // Get current question details
-        const currentQuestion = questions[activeRiddle - 1];
-        if (!currentQuestion) return;
+    const submittedAnswer = String(key || "").trim();
+    console.log("[submitRiddleKey] input", {
+      questId: activeQuestId || selectedQuestId,
+      questionId: questions[activeRiddle - 1]?.id || null,
+      activeRiddle,
+      submittedAnswer,
+    });
 
-        // Update user progress in backend
+    if (!submittedAnswer) {
+      setRiddleSubmitError("Please enter an answer.");
+      return;
+    }
+
+    const currentQuestion = questions[activeRiddle - 1];
+    if (!currentQuestion || !selectedQuestId) {
+      setRiddleSubmitError("Question context is missing. Please return to map and retry.");
+      return;
+    }
+
+    setIsSubmittingRiddle(true);
+    setRiddleSubmitError("");
+
+    try {
+      const questIdForValidation = activeQuestId || selectedQuestId;
+
+      if (!questIdForValidation) {
+        setRiddleSubmitError("Quest context is missing. Please return to quest lobby and start again.");
+        setIsSubmittingRiddle(false);
+        return;
+      }
+
+      const validation = await gameApi.submitAnswer(
+        questIdForValidation,
+        currentQuestion.id,
+        submittedAnswer,
+        localStorage.getItem("player_token"),
+      );
+
+      if (!validation?.isCorrect) {
+        setRiddleSubmitError("Incorrect answer. Please check your output and try again.");
+        setIsSubmittingRiddle(false);
+        return;
+      }
+
+      try {
         await gameApi.updateProgress(
           userDetails.id,
+          questIdForValidation,
+          currentQuestion.id,
           currentQuestion.level || activeRiddle,
-          20, // Fixed 20 points per level
+          Number(currentQuestion.score) || 10,
           localStorage.getItem("player_token"),
         );
-
-        // Update local state
-        setSolvedCount((prev) => prev + 1);
-
-        if (activeRiddle >= questions.length) {
-          // Winner!
-          showWinner();
-        } else {
-          setActiveRiddle((prev) => prev + 1);
-          goScreen("screen-map");
-        }
-      } catch (error) {
-        console.error("Failed to update progress:", error);
-        // Continue with local state even if backend fails
-        setSolvedCount((prev) => prev + 1);
-
-        if (activeRiddle >= questions.length) {
-          showWinner();
-        } else {
-          setActiveRiddle((prev) => prev + 1);
-          goScreen("screen-map");
-        }
+      } catch (progressError) {
+        console.error("Progress update failed after correct answer:", progressError);
       }
-    } else {
-      // Show error (would need to implement error handling in RiddleScreen)
-      console.log(
-        '❌ Incorrect key. Check your program\'s output. (Demo: type "SKIP" to advance)',
-      );
+
+      setSolvedCount((prev) => prev + 1);
+
+      if (activeRiddle >= questions.length) {
+        showWinner();
+      } else {
+        setActiveRiddle((prev) => prev + 1);
+        goScreen("screen-map");
+      }
+    } catch (error) {
+      console.error("Answer validation failed:", error);
+      setRiddleSubmitError(error?.message || "Unable to validate answer right now.");
+    } finally {
+      setIsSubmittingRiddle(false);
     }
   };
 
   const showWinner = () => {
+    if (startTime) {
+      setFinalElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
+    }
     goScreen("screen-winner");
   };
 
@@ -428,7 +473,9 @@ const App = () => {
     setIsSolvedRiddle(false);
     setTimeRemaining(3600);
     setIsTimeExpired(false);
+    setFinalElapsedSeconds(null);
     setQuestions([]);
+    setActiveQuestId("");
     setQuestError("");
     setLoginError("");
     setIsLaunchingQuest(false);
@@ -450,6 +497,7 @@ const App = () => {
       completedLevels: [],
     });
     setSelectedQuestId("");
+    setActiveQuestId("");
     setQuestions([]);
     setSolvedCount(0);
     setActiveRiddle(0);
@@ -458,6 +506,7 @@ const App = () => {
     setIsSolvedRiddle(false);
     setTimeRemaining(3600);
     setIsTimeExpired(false);
+    setFinalElapsedSeconds(null);
     setQuestError("");
     setLoginError("");
     setIsLaunchingQuest(false);
@@ -540,6 +589,8 @@ const App = () => {
             isSolved={isSolvedRiddle}
             onSubmit={submitRiddleKey}
             onBack={handleBackToMap}
+            submissionError={riddleSubmitError}
+            isSubmitting={isSubmittingRiddle}
           />
         </>
       </section>
@@ -549,11 +600,10 @@ const App = () => {
         id="screen-winner"
       >
         <WinnerScreen
-          startTime={startTime}
           onReset={resetGame}
           animation={true}
           isTimeExpired={isTimeExpired}
-          timeRemaining={timeRemaining}
+          finalElapsedSeconds={finalElapsedSeconds}
           userDetails={userDetails}
           solvedCount={solvedCount}
           totalRiddles={questions.length}

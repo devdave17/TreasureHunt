@@ -6,6 +6,7 @@ import Users from "./Users"
 import Quests from "./Quests"
 import Questions from "./Questions"
 import Stats from "./Stats"
+import Rankings from "./Rankings"
 
 function AdminLayout({ authToken, role, onLogout }) {
   const [activeTab, setActiveTab] = useState("dashboard")
@@ -14,7 +15,7 @@ function AdminLayout({ authToken, role, onLogout }) {
 
   const allowedTabs = resolvedRole === "invigilator"
     ? ["dashboard", "users"]
-    : ["dashboard", "users", "quests", "questions", "stats"]
+    : ["dashboard", "users", "quests", "questions", "rankings", "stats"]
 
   const safeActiveTab = allowedTabs.includes(activeTab) ? activeTab : "dashboard"
 
@@ -30,6 +31,8 @@ function AdminLayout({ authToken, role, onLogout }) {
         return <Questions authToken={authToken} />
       case "stats":
         return <Stats authToken={authToken} />
+      case "rankings":
+        return <Rankings authToken={authToken} />
       default:
         return <Dashboard authToken={authToken} role={resolvedRole} />
     }

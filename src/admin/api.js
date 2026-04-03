@@ -162,6 +162,18 @@ export const api = {
     return parseJsonSafe(response);
   },
 
+  async getQuestRanking(questId, token, role = "admin") {
+    const response = await fetch(`${BASE_URL}/game/quests/${questId}/ranking`, {
+      headers: getReadHeaders(token, role),
+    });
+    if (response.status === 401) throw new Error("Session expired");
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || "Failed to fetch ranking");
+    }
+    return parseJsonSafe(response);
+  },
+
   // Questions endpoints
   async getQuestions(token, questId = "", role = "admin") {
     const query = questId ? `?questId=${encodeURIComponent(questId)}` : "";

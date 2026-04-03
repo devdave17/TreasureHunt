@@ -17,6 +17,10 @@ const normalizeTimestampLike = (value) => {
   }
 
   if (typeof value === "object") {
+    if (value instanceof Date) {
+      return value.getTime()
+    }
+
     if (typeof value.toMillis === "function") {
       const millis = Number(value.toMillis())
       if (Number.isFinite(millis)) {

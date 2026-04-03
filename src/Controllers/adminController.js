@@ -1,6 +1,5 @@
 import { db, dbConfig } from "../backend/database/dbConfig.js"
 import { normalizeQuestSchedule, getQuestStartAtMs } from "../utils/questTiming.js"
-import admin from "../backend/firebase/firebaseConfig.js"
 import { readFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -131,16 +130,20 @@ export const addUser = async (req, res) => {
 // ✅ GET USERS
 export const getUsers = async (req, res) => {
   try {
-    const snapshot = await db.collection("users").get()
+    const snapshot = await db.collection(dbConfig.COLLECTIONS.USERS).get()
 
-    const users = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
+    const users = snapshot.docs.map((doc) => {
+      const userData = doc.data() || {}
+
+      return {
+        id: doc.id,
+        ...userData,
+      }
+    })
 
     res.json(users)
   } catch (error) {
-    console.error(error)
+    console.error("Error fetching users:", error)
     res.status(500).json({ error: "Failed to fetch users" })
   }
 }
@@ -342,7 +345,7 @@ export const addQuest = async (req, res) => {
       description: String(description || "").trim(),
       durationMinutes: parsedDurationMinutes,
       startAtMs: parsedStartAtMs,
-      startAt: admin.firestore.Timestamp.fromMillis(parsedStartAtMs),
+      startAt: new Date(parsedStartAtMs),
       isActive: Boolean(isActive),
       createdAt: new Date(),
       updatedAt: new Date()
@@ -353,6 +356,11 @@ export const addQuest = async (req, res) => {
     res.status(201).json({
       message: "Quest created successfully",
       quest: { id: docRef.id, ...quest }
+    })
+
+    req.io?.emit("quest-changed", {
+      action: "created",
+      quest: { id: docRef.id, ...normalizeQuestSchedule(quest) }
     })
   } catch (error) {
     console.error("Error adding quest:", error)
@@ -409,12 +417,27 @@ export const updateQuest = async (req, res) => {
       description: String(description || "").trim(),
       durationMinutes: parsedDurationMinutes,
       startAtMs: parsedStartAtMs,
-      startAt: admin.firestore.Timestamp.fromMillis(parsedStartAtMs),
+      startAt: new Date(parsedStartAtMs),
       isActive: Boolean(isActive),
       updatedAt: new Date()
     })
 
     res.json({ message: "Quest updated successfully", questId })
+
+    req.io?.emit("quest-changed", {
+      action: "updated",
+      quest: {
+        id: questId,
+        name: questName,
+        code: questCode,
+        description: String(description || "").trim(),
+        durationMinutes: parsedDurationMinutes,
+        startAtMs: parsedStartAtMs,
+        startAt: new Date(parsedStartAtMs),
+        isActive: Boolean(isActive),
+        updatedAt: new Date()
+      }
+    })
   } catch (error) {
     console.error("Error updating quest:", error)
     res.status(500).json({ error: "Failed to update quest" })
@@ -493,6 +516,7 @@ export const addQuestion = async (req, res) => {
       riddleText = "",
       problemStatement = "",
       correctAnswer,
+      score = 10,
       difficulty = "Medium"
     } = req.body
 
@@ -519,6 +543,11 @@ export const addQuestion = async (req, res) => {
       return res.status(400).json({ error: "Correct answer is required" })
     }
 
+    const parsedScore = Number(score)
+    if (!Number.isInteger(parsedScore) || parsedScore < 1) {
+      return res.status(400).json({ error: "Score must be a positive whole number" })
+    }
+
     const question = {
       questId: String(questId),
       questName: String(questDoc.data()?.name || ""),
@@ -527,6 +556,7 @@ export const addQuestion = async (req, res) => {
       riddleText: String(riddleText || "").trim(),
       problemStatement: String(problemStatement || "").trim(),
       correctAnswer: String(correctAnswer).trim(),
+      score: parsedScore,
       difficulty: ["Easy", "Medium", "Hard"].includes(difficulty) ? difficulty : "Medium",
       createdAt: new Date(),
       updatedAt: new Date()
@@ -558,6 +588,7 @@ export const updateQuestion = async (req, res) => {
       riddleText = "",
       problemStatement = "",
       correctAnswer,
+      score = 10,
       difficulty = "Medium"
     } = req.body
 
@@ -587,6 +618,11 @@ export const updateQuestion = async (req, res) => {
       return res.status(400).json({ error: "Correct answer is required" })
     }
 
+    const parsedScore = Number(score)
+    if (!Number.isInteger(parsedScore) || parsedScore < 1) {
+      return res.status(400).json({ error: "Score must be a positive whole number" })
+    }
+
     const updates = {
       questId: String(questId),
       questName: String(questDoc.data()?.name || ""),
@@ -595,6 +631,7 @@ export const updateQuestion = async (req, res) => {
       riddleText: String(riddleText || "").trim(),
       problemStatement: String(problemStatement || "").trim(),
       correctAnswer: String(correctAnswer).trim(),
+      score: parsedScore,
       difficulty: ["Easy", "Medium", "Hard"].includes(difficulty) ? difficulty : "Medium",
       updatedAt: new Date()
     }

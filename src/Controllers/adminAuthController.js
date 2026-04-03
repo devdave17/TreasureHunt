@@ -1,3 +1,7 @@
+import dotenv from "dotenv"
+
+dotenv.config({ override: true })
+
 export const loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body || {}
