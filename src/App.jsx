@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import Stars from "./components/Stars";
 import LandingScreen from "./components/LandingScreen";
@@ -67,6 +67,7 @@ const App = () => {
   const [currentRiddle, setCurrentRiddle] = useState(null);
   const [isSolvedRiddle, setIsSolvedRiddle] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(3600);
+  const [questTimeLimitSeconds, setQuestTimeLimitSeconds] = useState(3600);
   const [isTimeExpired, setIsTimeExpired] = useState(false);
   const [userDetails, setUserDetails] = useState({
     id: "",
@@ -80,6 +81,7 @@ const App = () => {
   const [selectedQuestId, setSelectedQuestId] = useState("");
   const [activeQuestId, setActiveQuestId] = useState("");
   const [questions, setQuestions] = useState([]);
+  const [questLevelCounts, setQuestLevelCounts] = useState({});
   const [loadingQuests, setLoadingQuests] = useState(true);
   const [questError, setQuestError] = useState("");
   const [shouldShowProfileModal, setShouldShowProfileModal] = useState(false);
@@ -90,8 +92,61 @@ const App = () => {
   const [riddleSubmitError, setRiddleSubmitError] = useState("");
   const [isSubmittingRiddle, setIsSubmittingRiddle] = useState(false);
   const [finalElapsedSeconds, setFinalElapsedSeconds] = useState(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [isBlockedByInvigilator, setIsBlockedByInvigilator] = useState(false);
+  const [showBlockedPopup, setShowBlockedPopup] = useState(false);
+  const hasAutoSubmittedRef = useRef(false);
 
   const isPlayerLoggedIn = Boolean(userDetails.email && userDetails.name);
+
+  const handleBlockedByInvigilator = (message) => {
+    setIsBlockedByInvigilator(true);
+    setShowBlockedPopup(true);
+    setShowExitConfirm(false);
+    setRiddleSubmitError("");
+    setSolvedCount(0);
+    setFinalElapsedSeconds(null);
+    setIsTimeExpired(false);
+    goScreen("screen-winner");
+
+    if (message) {
+      console.warn(message);
+    }
+  };
+
+  const autoSubmitQuestAttempt = async (reason = "timeout") => {
+    if (isBlockedByInvigilator) {
+      return;
+    }
+
+    if (hasAutoSubmittedRef.current) {
+      return;
+    }
+
+    const questIdForSubmit = activeQuestId || selectedQuestId;
+    if (!questIdForSubmit || !userDetails.id) {
+      return;
+    }
+
+    hasAutoSubmittedRef.current = true;
+
+    try {
+      await gameApi.finalizeQuestAttempt(
+        questIdForSubmit,
+        userDetails.id,
+        {
+          reason,
+          solvedCount,
+          totalQuestions: questions.length,
+          currentLevel: activeRiddle,
+        },
+        localStorage.getItem("player_token"),
+      );
+    } catch (error) {
+      console.error("Failed to auto-submit quest attempt:", error);
+      hasAutoSubmittedRef.current = false;
+    }
+  };
 
   useEffect(() => {
     try {
@@ -182,20 +237,60 @@ const App = () => {
       }
     };
 
+    const onQuestLevelDistribution = (payload = {}) => {
+      const payloadQuestId = String(payload.questId || "");
+      const currentQuestId = String(activeQuestId || selectedQuestId || "");
+      if (!payloadQuestId || !currentQuestId || payloadQuestId !== currentQuestId) {
+        return;
+      }
+
+      const counts = Array.isArray(payload.counts) ? payload.counts : [];
+      const nextCounts = {};
+      counts.forEach((entry) => {
+        const level = Number(entry.level);
+        const players = Number(entry.players);
+        if (Number.isFinite(level) && level > 0) {
+          nextCounts[level] = Number.isFinite(players) && players > 0 ? players : 0;
+        }
+      });
+
+      setQuestLevelCounts(nextCounts);
+    };
+
+    const onPlayerBlocked = (payload = {}) => {
+      if (!payload?.isBlocked) {
+        return;
+      }
+
+      const targetUserId = String(payload.userId || "");
+      if (!targetUserId || targetUserId !== String(userDetails.id || "")) {
+        return;
+      }
+
+      handleBlockedByInvigilator(
+        payload.message || "You have been blocked by the invigilator due to UMF (Unfair Means).",
+      );
+    };
+
     socket.on("quest-changed", syncQuestList);
+    socket.on("quest-level-distribution", onQuestLevelDistribution);
+    socket.on("player-blocked", onPlayerBlocked);
 
     return () => {
       socket.off("quest-changed", syncQuestList);
+      socket.off("quest-level-distribution", onQuestLevelDistribution);
+      socket.off("player-blocked", onPlayerBlocked);
       socket.disconnect();
     };
-  }, []);
+  }, [userDetails.id, activeQuestId, selectedQuestId]);
 
   // Timer effect
   useEffect(() => {
-    if (startTime && !isTimeExpired && timeRemaining > 0) {
+    if (startTime && !isTimeExpired && !isBlockedByInvigilator && timeRemaining > 0) {
       const timer = setInterval(() => {
         setTimeRemaining((prev) => {
           if (prev <= 1) {
+            void autoSubmitQuestAttempt("timeout");
             if (startTime) {
               setFinalElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
             }
@@ -209,7 +304,7 @@ const App = () => {
 
       return () => clearInterval(timer);
     }
-  }, [startTime, isTimeExpired, timeRemaining]);
+  }, [startTime, isTimeExpired, isBlockedByInvigilator, timeRemaining, activeQuestId, selectedQuestId, userDetails.id, solvedCount, questions.length]);
 
   const goScreen = (screenId) => {
     setCurrentScreen(screenId);
@@ -314,6 +409,7 @@ const App = () => {
 
     setIsLaunchingQuest(true);
     setQuestError("");
+    setQuestLevelCounts({});
 
     try {
       const response = await fetch(
@@ -343,11 +439,34 @@ const App = () => {
             localStorage.getItem("player_token"),
           );
         } catch (timerError) {
+          if (String(timerError?.message || "").toLowerCase().includes("blocked by invigilator")) {
+            handleBlockedByInvigilator(
+              "You have been blocked by the invigilator due to UMF (Unfair Means).",
+            );
+            setIsLaunchingQuest(false);
+            return;
+          }
           console.error("Failed to initialize first question timer:", timerError);
         }
       }
 
       setQuestions(questionList);
+
+      try {
+        const distribution = await gameApi.getQuestLevelDistribution(questIdForTimer);
+        const counts = Array.isArray(distribution?.counts) ? distribution.counts : [];
+        const nextCounts = {};
+        counts.forEach((entry) => {
+          const level = Number(entry.level);
+          const players = Number(entry.players);
+          if (Number.isFinite(level) && level > 0) {
+            nextCounts[level] = Number.isFinite(players) && players > 0 ? players : 0;
+          }
+        });
+        setQuestLevelCounts(nextCounts);
+      } catch (distributionError) {
+        console.error("Failed to fetch quest level distribution:", distributionError);
+      }
     } catch {
       setQuestError("Failed to load quest questions. Please retry.");
       setIsLaunchingQuest(false);
@@ -359,12 +478,14 @@ const App = () => {
     setSolvedCount(0);
     setActiveRiddle(1);
     setTimeRemaining(questDurationSeconds);
+    setQuestTimeLimitSeconds(questDurationSeconds);
     setIsTimeExpired(false);
     setFinalElapsedSeconds(null);
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
     setIsLaunchingQuest(false);
     goScreen("screen-map");
+    hasAutoSubmittedRef.current = false;
   };
 
   const openRiddle = async (riddleNum, isSolved = false) => {
@@ -420,6 +541,7 @@ const App = () => {
         currentQuestion.id,
         submittedAnswer,
         localStorage.getItem("player_token"),
+        userDetails.id,
       );
 
       if (!validation?.isCorrect) {
@@ -451,7 +573,13 @@ const App = () => {
       }
     } catch (error) {
       console.error("Answer validation failed:", error);
-      setRiddleSubmitError(error?.message || "Unable to validate answer right now.");
+      if (String(error?.message || "").toLowerCase().includes("blocked by invigilator")) {
+        handleBlockedByInvigilator(
+          "You have been blocked by the invigilator due to UMF (Unfair Means).",
+        );
+      } else {
+        setRiddleSubmitError(error?.message || "Unable to validate answer right now.");
+      }
     } finally {
       setIsSubmittingRiddle(false);
     }
@@ -472,14 +600,32 @@ const App = () => {
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
     setTimeRemaining(3600);
+    setQuestTimeLimitSeconds(3600);
     setIsTimeExpired(false);
     setFinalElapsedSeconds(null);
     setQuestions([]);
+    setQuestLevelCounts({});
     setActiveQuestId("");
     setQuestError("");
     setLoginError("");
     setIsLaunchingQuest(false);
     setQuestLockNotice(null);
+    setShowExitConfirm(false);
+    setIsBlockedByInvigilator(false);
+    setShowBlockedPopup(false);
+    hasAutoSubmittedRef.current = false;
+  };
+
+  const handleRequestExitQuest = () => {
+    setShowExitConfirm(true);
+  };
+
+  const handleCancelExitQuest = () => {
+    setShowExitConfirm(false);
+  };
+
+  const handleConfirmExitQuest = () => {
+    resetGame();
   };
 
   const handleBackToLanding = () => {
@@ -499,6 +645,7 @@ const App = () => {
     setSelectedQuestId("");
     setActiveQuestId("");
     setQuestions([]);
+    setQuestLevelCounts({});
     setSolvedCount(0);
     setActiveRiddle(0);
     setStartTime(null);
@@ -511,6 +658,9 @@ const App = () => {
     setLoginError("");
     setIsLaunchingQuest(false);
     setQuestLockNotice(null);
+    setIsBlockedByInvigilator(false);
+    setShowBlockedPopup(false);
+    hasAutoSubmittedRef.current = false;
     goScreen("screen-landing");
   };
 
@@ -572,8 +722,9 @@ const App = () => {
             solvedCount={solvedCount}
             activeRiddle={activeRiddle}
             onNodeClick={openRiddle}
-            onExit={() => goScreen("screen-quest")}
+            onExit={handleRequestExitQuest}
             questions={questions}
+            levelCounts={questLevelCounts}
           />
         </>
       </section>
@@ -603,12 +754,50 @@ const App = () => {
           onReset={resetGame}
           animation={true}
           isTimeExpired={isTimeExpired}
+          isBlockedByInvigilator={isBlockedByInvigilator}
           finalElapsedSeconds={finalElapsedSeconds}
+          questTimeLimitSeconds={questTimeLimitSeconds}
           userDetails={userDetails}
           solvedCount={solvedCount}
           totalRiddles={questions.length}
         />
       </section>
+
+      {showBlockedPopup && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="blocked-popup-title">
+          <div className="profile-modal exit-confirm-modal anim-reveal">
+            <div className="exit-confirm-heading" id="blocked-popup-title">Blocked by Invigilator</div>
+            <p className="exit-confirm-message">
+              You have been blocked by the invigilator due to UMF (Unfair Means). You are disqualified and out of this competition.
+            </p>
+            <div className="exit-confirm-actions">
+              <button className="btn-primary" onClick={() => setShowBlockedPopup(false)}>
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showExitConfirm && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="exit-confirm-title">
+          <div className="profile-modal exit-confirm-modal anim-reveal">
+            <div className="exit-confirm-heading" id="exit-confirm-title">Are You Sure to Exit?</div>
+            <p className="exit-confirm-message">
+              If you exit now, this active quest attempt will be closed and your current run data may be cleared.
+              Recorded results are saved separately. Do you want to continue?
+            </p>
+            <div className="exit-confirm-actions">
+              <button className="btn-primary" onClick={handleConfirmExitQuest}>
+                Yes, Exit
+              </button>
+              <button className="btn-secondary" onClick={handleCancelExitQuest}>
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

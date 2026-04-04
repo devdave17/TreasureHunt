@@ -24,7 +24,7 @@ const buildRiddleNodes = (questions) => {
   });
 };
 
-const MapScreen = ({ solvedCount, activeRiddle, onNodeClick, onExit, questions = [] }) => {
+const MapScreen = ({ solvedCount, activeRiddle, onNodeClick, onExit, questions = [], levelCounts = {} }) => {
   const svgRef = useRef(null);
   const canvasRef = useRef(null);
   const [paths, setPaths] = useState([]);
@@ -131,6 +131,14 @@ const MapScreen = ({ solvedCount, activeRiddle, onNodeClick, onExit, questions =
       : "All riddles solved!";
   };
 
+  const getPlayersAtLevel = (level) => {
+    if (!Number.isFinite(Number(level))) {
+      return 0;
+    }
+
+    return Number(levelCounts?.[Number(level)]) || 0;
+  };
+
   return (
     <>
       <div className="map-header map-shell">
@@ -200,7 +208,12 @@ const MapScreen = ({ solvedCount, activeRiddle, onNodeClick, onExit, questions =
               <div className="node-card">
                 <div className="node-label">{node.label}</div>
                 {node.num ? (
-                  <div className="node-sub">Checkpoint {node.num}</div>
+                  <>
+                    <div className="node-sub">Checkpoint {node.num}</div>
+                    <div className="node-players">
+                      {getPlayersAtLevel(node.num)} player{getPlayersAtLevel(node.num) === 1 ? "" : "s"} here
+                    </div>
+                  </>
                 ) : (
                   <div className="node-sub">Entry Gate</div>
                 )}

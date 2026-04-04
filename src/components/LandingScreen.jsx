@@ -1,10 +1,23 @@
 import React from "react";
 
 const LandingScreen = ({ onStart }) => {
+  const [isLogoAvailable, setIsLogoAvailable] = React.useState(true);
+
   return (
     <>
       <div className="landing-badge">⚡ Cout &lt;&lt; Masters; presents</div>
-      <div className="landing-chest">🏴‍☠️</div>
+      <div className="landing-logo" aria-label="Cout Masters logo">
+        {isLogoAvailable ? (
+          <img
+            src="/CC-logo.png"
+            alt="Cout Masters logo"
+            className="landing-logo-image"
+            onError={() => setIsLogoAvailable(false)}
+          />
+        ) : (
+          "CM"
+        )}
+      </div>
       <h1 className="landing-title">
         Treasure
         <br />
@@ -70,7 +83,7 @@ const LandingScreen = ({ onStart }) => {
         }}
       >
         <button className="btn-primary" onClick={onStart}>
-          ⚔️ &nbsp; Begin Quest
+          Login
         </button>
       </div>
       <div className="landing-footer">

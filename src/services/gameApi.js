@@ -18,6 +18,19 @@ const parseJsonSafe = async (response) => {
 };
 
 export const gameApi = {
+  async getQuestLevelDistribution(questId) {
+    const response = await fetch(
+      `${BASE_URL}/game/quests/${encodeURIComponent(questId)}/level-distribution`,
+    );
+
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || "Failed to fetch quest level distribution");
+    }
+
+    return parseJsonSafe(response);
+  },
+
   async getQuestRanking(questId) {
     const response = await fetch(`${BASE_URL}/game/quests/${encodeURIComponent(questId)}/ranking`);
 
@@ -103,7 +116,7 @@ export const gameApi = {
   },
 
   // Submit question answer for a specific quest/question
-  async submitAnswer(questId, questionId, answer, token) {
+  async submitAnswer(questId, questionId, answer, token, userId) {
     console.log("[gameApi.submitAnswer] request", {
       questId,
       questionId,
@@ -114,7 +127,7 @@ export const gameApi = {
       {
       method: "POST",
       headers: getAuthHeaders(token),
-      body: JSON.stringify({ answer }),
+      body: JSON.stringify({ answer, userId }),
     }
     );
 
@@ -127,6 +140,24 @@ export const gameApi = {
       questId,
       questionId,
     });
+
+    return parseJsonSafe(response);
+  },
+
+  async finalizeQuestAttempt(questId, userId, payload = {}, token) {
+    const response = await fetch(
+      `${BASE_URL}/game/quests/${encodeURIComponent(questId)}/finalize`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(token),
+        body: JSON.stringify({ userId, ...payload }),
+      },
+    );
+
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || "Failed to finalize quest attempt");
+    }
 
     return parseJsonSafe(response);
   },

@@ -74,7 +74,7 @@ const RiddleScreen = ({
         <div className="key-output-panel">
           <div className="input-group">
             <div className="input-label">
-              // Enter Output Key (from previous solution)
+              // Enter Answer
             </div>
             <input
               ref={inputRef}
@@ -87,9 +87,6 @@ const RiddleScreen = ({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
             />
-            <div className="input-hint">
-              # Output from Problem {riddle.prevNum} → unlocks next riddle
-            </div>
           </div>
           <div className="error-msg">{error || submissionError}</div>
           <div className="btn-group">

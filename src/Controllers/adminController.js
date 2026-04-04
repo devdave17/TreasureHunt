@@ -157,12 +157,51 @@ export const blockUser = async (req, res) => {
       return res.status(400).json({ error: "userId is required" })
     }
 
-    await db.collection("users").doc(userId).update({
-      isBlocked: Boolean(isBlocked)
+    const shouldBlock = Boolean(isBlocked)
+    const userRef = db.collection(dbConfig.COLLECTIONS.USERS).doc(userId)
+
+    await userRef.update({
+      isBlocked: shouldBlock,
+      ...(shouldBlock
+        ? {
+            score: 0,
+            currentLevel: 1,
+            completedLevels: [],
+            disqualificationReason: "UMF",
+            disqualifiedAt: new Date(),
+          }
+        : {
+            disqualificationReason: null,
+            disqualifiedAt: null,
+          }),
+      updatedAt: new Date(),
     })
 
-    res.json({ message: isBlocked ? "User blocked" : "User unblocked" })
+    if (shouldBlock) {
+      const progressSnapshot = await db
+        .collection(dbConfig.COLLECTIONS.QUEST_PROGRESS)
+        .where("userId", "==", String(userId))
+        .get()
+
+      for (const doc of progressSnapshot.docs) {
+        await doc.ref.delete()
+      }
+    }
+
+    if (req.io) {
+      req.io.emit("player-blocked", {
+        userId: String(userId),
+        isBlocked: shouldBlock,
+        reason: shouldBlock ? "UMF" : null,
+        message: shouldBlock
+          ? "You have been blocked by the invigilator due to UMF (Unfair Means)."
+          : "You have been unblocked by the invigilator.",
+      })
+    }
+
+    res.json({ message: shouldBlock ? "User blocked" : "User unblocked" })
   } catch (error) {
+    console.error("Error blocking user:", error)
     res.status(500).json({ error: "Failed to block user" })
   }
 }
@@ -516,6 +555,8 @@ export const addQuestion = async (req, res) => {
       riddleText = "",
       problemStatement = "",
       correctAnswer,
+      acceptedAnswers = [],
+      answerValidationMode = "flexible",
       score = 10,
       difficulty = "Medium"
     } = req.body
@@ -548,6 +589,20 @@ export const addQuestion = async (req, res) => {
       return res.status(400).json({ error: "Score must be a positive whole number" })
     }
 
+    const parsedAcceptedAnswers = Array.isArray(acceptedAnswers)
+      ? [...new Set(
+          acceptedAnswers
+            .map((entry) => String(entry || "").trim())
+            .filter(Boolean),
+        )]
+      : []
+
+    const normalizedValidationMode = ["strict", "flexible"].includes(
+      String(answerValidationMode || "").toLowerCase(),
+    )
+      ? String(answerValidationMode).toLowerCase()
+      : "flexible"
+
     const question = {
       questId: String(questId),
       questName: String(questDoc.data()?.name || ""),
@@ -556,6 +611,8 @@ export const addQuestion = async (req, res) => {
       riddleText: String(riddleText || "").trim(),
       problemStatement: String(problemStatement || "").trim(),
       correctAnswer: String(correctAnswer).trim(),
+      acceptedAnswers: parsedAcceptedAnswers,
+      answerValidationMode: normalizedValidationMode,
       score: parsedScore,
       difficulty: ["Easy", "Medium", "Hard"].includes(difficulty) ? difficulty : "Medium",
       createdAt: new Date(),
@@ -588,6 +645,8 @@ export const updateQuestion = async (req, res) => {
       riddleText = "",
       problemStatement = "",
       correctAnswer,
+      acceptedAnswers = [],
+      answerValidationMode = "flexible",
       score = 10,
       difficulty = "Medium"
     } = req.body
@@ -623,6 +682,20 @@ export const updateQuestion = async (req, res) => {
       return res.status(400).json({ error: "Score must be a positive whole number" })
     }
 
+    const parsedAcceptedAnswers = Array.isArray(acceptedAnswers)
+      ? [...new Set(
+          acceptedAnswers
+            .map((entry) => String(entry || "").trim())
+            .filter(Boolean),
+        )]
+      : []
+
+    const normalizedValidationMode = ["strict", "flexible"].includes(
+      String(answerValidationMode || "").toLowerCase(),
+    )
+      ? String(answerValidationMode).toLowerCase()
+      : "flexible"
+
     const updates = {
       questId: String(questId),
       questName: String(questDoc.data()?.name || ""),
@@ -631,6 +704,8 @@ export const updateQuestion = async (req, res) => {
       riddleText: String(riddleText || "").trim(),
       problemStatement: String(problemStatement || "").trim(),
       correctAnswer: String(correctAnswer).trim(),
+      acceptedAnswers: parsedAcceptedAnswers,
+      answerValidationMode: normalizedValidationMode,
       score: parsedScore,
       difficulty: ["Easy", "Medium", "Hard"].includes(difficulty) ? difficulty : "Medium",
       updatedAt: new Date()
