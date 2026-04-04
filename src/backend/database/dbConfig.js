@@ -308,7 +308,7 @@ class MongoDatabaseAdapter {
 
     const mongoUri = getMongoUri()
 
-    if (!MONGO_URI) {
+    if (!mongoUri) {
       throw new Error("MongoDB is not configured. Set MONGO_URI or MONGODB_URI.")
     }
 

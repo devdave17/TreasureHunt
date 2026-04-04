@@ -1,6 +1,6 @@
 import dotenv from "dotenv"
 
-dotenv.config({ override: true })
+dotenv.config()
 
 const getTokenFromHeaders = (req) => {
   const bearerHeader = req.headers.authorization || ""
