@@ -11,6 +11,7 @@ import adminRoutes from "./src/routes/adminRoutes.js"
 import gameRoutes from "./src/routes/gameRoutes.js"
 import { adminAuth } from "./src/backend/middleware/adminAuth.js"
 import { loginAdmin } from "./src/Controllers/adminAuthController.js"
+import { db } from "./src/backend/database/dbConfig.js"
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5001
@@ -54,6 +55,15 @@ app.use(express.static(path.join(__dirname, "dist")))
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"))
 })
+
+// Verify DB connectivity on boot so deployment issues fail fast with clear logs.
+try {
+  await db.ensureReady()
+  console.log("✅ MongoDB connected")
+} catch (error) {
+  console.error("❌ MongoDB connection failed at startup:", error)
+  process.exit(1)
+}
 
 // 👇 last me server start
 httpServer.listen(PORT, () => {
