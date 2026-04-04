@@ -9,7 +9,7 @@ const LandingScreen = ({ onStart }) => {
       <div className="landing-logo" aria-label="Cout Masters logo">
         {isLogoAvailable ? (
           <img
-            src="/CC-logo.png"
+            src="/logo2.jpeg"
             alt="Cout Masters logo"
             className="landing-logo-image"
             onError={() => setIsLogoAvailable(false)}
@@ -47,8 +47,8 @@ const LandingScreen = ({ onStart }) => {
           <div>
             <div className="rule-title">Follow the Map</div>
             <div className="rule-text">
-              Dynamic stages on the treasure map — Easy → Medium → Hard. Each node
-              unlocks a new puzzle.
+              Dynamic stages on the treasure map — Easy → Medium → Hard. Each
+              node unlocks a new puzzle.
             </div>
           </div>
         </div>
