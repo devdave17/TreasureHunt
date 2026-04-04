@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 const buildLimiter = ({ windowMs, max, keyGenerator, label }) =>
   rateLimit({
@@ -14,7 +14,7 @@ const buildLimiter = ({ windowMs, max, keyGenerator, label }) =>
     },
   });
 
-const ipKey = (req) => String(req.ip || req.socket?.remoteAddress || "unknown");
+const ipKey = (req) => ipKeyGenerator(String(req.ip || req.socket?.remoteAddress || "unknown"));
 
 const playerKey = (req) => {
   const playerId = String(req.playerId || "").trim();

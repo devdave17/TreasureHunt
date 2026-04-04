@@ -215,6 +215,7 @@ export const blockUser = async (req, res) => {
           : "You have been unblocked by the invigilator.",
       })
     }
+  } catch (error) {
     console.error("Error blocking user:", error)
     res.status(500).json({ error: "Failed to block user" })
   }
