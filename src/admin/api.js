@@ -30,8 +30,11 @@ export const api = {
       headers: getReadHeaders(token, role),
     });
     if (response.status === 401) throw new Error("Session expired");
-    if (!response.ok) throw new Error("Failed to fetch users");
-    return response.json();
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || `Failed to fetch users (status ${response.status})`);
+    }
+    return parseJsonSafe(response);
   },
 
   async addUser(userData, token, role = "admin") {
