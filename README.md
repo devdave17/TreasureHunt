@@ -18,13 +18,21 @@ Note: This will impact Vite dev & build performances.
 Admin APIs are protected by a token middleware. Route name alone is not security.
 
 1. Copy `.env.example` to `.env`
-2. Set values for `ADMIN_API_TOKEN`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD`
+2. Set values for `ADMIN_API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `PLAYER_MASTER_PASSWORD`
 3. Start backend: `node server.js`
 4. Start frontend: `npm run dev`
 5. Open admin UI at `/admin.html`
 6. Login with `ADMIN_USERNAME` and `ADMIN_PASSWORD`
 
 Without a valid token, `/admin/*` APIs return `401 Unauthorized`.
+
+## Deployment Notes
+
+For Render, set the backend env vars `MONGO_URI` or `MONGODB_URI`, `MONGO_DB_NAME` or `MONGODB_DB`, `ADMIN_API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `PLAYER_MASTER_PASSWORD`.
+
+For Vercel, set `VITE_API_BASE_URL` to the Render backend URL so the frontend talks to the deployed API instead of `localhost`.
+
+This repo uses a separate admin entrypoint, so direct navigation to `/admin` is rewritten to `/admin.html` through `vercel.json`.
 
 ## Bulk Insert Users
 

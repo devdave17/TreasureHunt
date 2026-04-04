@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto"
 import { MongoClient } from "mongodb"
 import process from "node:process"
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI
-const MONGO_DB_NAME = process.env.MONGO_DB_NAME || process.env.MONGODB_DB || "treasurehunt"
+const getMongoUri = () => process.env.MONGO_URI || process.env.MONGODB_URI
+
+const getMongoDbName = () => process.env.MONGO_DB_NAME || process.env.MONGODB_DB || "treasurehunt"
 
 const deepClone = (value) => {
   if (value === undefined) {
@@ -305,14 +306,16 @@ class MongoDatabaseAdapter {
       return this.mongoDb
     }
 
+    const mongoUri = getMongoUri()
+
     if (!MONGO_URI) {
       throw new Error("MongoDB is not configured. Set MONGO_URI or MONGODB_URI.")
     }
 
     if (!this.readyPromise) {
-      this.client = new MongoClient(MONGO_URI)
+      this.client = new MongoClient(mongoUri)
       this.readyPromise = this.client.connect().then((client) => {
-        this.mongoDb = client.db(MONGO_DB_NAME)
+        this.mongoDb = client.db(getMongoDbName())
         return this.mongoDb
       })
     }
