@@ -215,19 +215,6 @@ export const blockUser = async (req, res) => {
           : "You have been unblocked by the invigilator.",
       })
     }
-                  const affectedQuestIds = new Set()
-                  for (const doc of progressSnapshot.docs) {
-                    const progressData = doc.data() || {}
-                    if (progressData.questId) {
-                      affectedQuestIds.add(String(progressData.questId))
-                    }
-                    await doc.ref.delete()
-                  }
-
-                  affectedQuestIds.forEach((questId) => {
-                    invalidateQuestRankingCache(questId)
-                    scheduleQuestDistributionBroadcast(req.io, questId)
-                  })
     console.error("Error blocking user:", error)
     res.status(500).json({ error: "Failed to block user" })
   }
