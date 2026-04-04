@@ -96,6 +96,7 @@ const App = () => {
   const [isBlockedByInvigilator, setIsBlockedByInvigilator] = useState(false);
   const [showBlockedPopup, setShowBlockedPopup] = useState(false);
   const hasAutoSubmittedRef = useRef(false);
+  const socketRef = useRef(null);
 
   const isPlayerLoggedIn = Boolean(userDetails.email && userDetails.name);
 
@@ -202,6 +203,12 @@ const App = () => {
     const socket = io(GAME_API_BASE, {
       transports: ["websocket"],
     });
+    socketRef.current = socket;
+
+    const currentRoomQuestId = String(activeQuestId || selectedQuestId || "").trim();
+    if (currentRoomQuestId) {
+      socket.emit("join-quest-room", currentRoomQuestId);
+    }
 
     const syncQuestList = (payload = {}) => {
       if (payload.action === "deleted") {
@@ -277,10 +284,17 @@ const App = () => {
     socket.on("player-blocked", onPlayerBlocked);
 
     return () => {
+      const previousRoomQuestId = String(activeQuestId || selectedQuestId || "").trim();
+      if (previousRoomQuestId) {
+        socket.emit("leave-quest-room", previousRoomQuestId);
+      }
       socket.off("quest-changed", syncQuestList);
       socket.off("quest-level-distribution", onQuestLevelDistribution);
       socket.off("player-blocked", onPlayerBlocked);
       socket.disconnect();
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
     };
   }, [userDetails.id, activeQuestId, selectedQuestId]);
 
@@ -486,6 +500,10 @@ const App = () => {
     setIsLaunchingQuest(false);
     goScreen("screen-map");
     hasAutoSubmittedRef.current = false;
+
+    if (socketRef.current) {
+      socketRef.current.emit("join-quest-room", String(questToLaunch));
+    }
   };
 
   const openRiddle = async (riddleNum, isSolved = false) => {
@@ -625,6 +643,12 @@ const App = () => {
   };
 
   const handleConfirmExitQuest = () => {
+    if (socketRef.current) {
+      const questRoomId = String(activeQuestId || selectedQuestId || "").trim();
+      if (questRoomId) {
+        socketRef.current.emit("leave-quest-room", questRoomId);
+      }
+    }
     resetGame();
   };
 
@@ -633,6 +657,12 @@ const App = () => {
   };
 
   const handleLogout = () => {
+    if (socketRef.current) {
+      const questRoomId = String(activeQuestId || selectedQuestId || "").trim();
+      if (questRoomId) {
+        socketRef.current.emit("leave-quest-room", questRoomId);
+      }
+    }
     localStorage.removeItem(PLAYER_SESSION_KEY);
     setUserDetails({
       id: "",

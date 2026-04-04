@@ -1,4 +1,5 @@
 import dotenv from "dotenv"
+import jwt from "jsonwebtoken"
 
 dotenv.config()
 
@@ -10,12 +11,12 @@ export const loginAdmin = async (req, res) => {
     const expectedPassword = process.env.ADMIN_PASSWORD
     const invigilatorUsername = process.env.INVIGILATOR_USERNAME
     const invigilatorPassword = process.env.INVIGILATOR_PASSWORD
-    const adminApiToken = process.env.ADMIN_API_TOKEN
+    const adminJwtSecret = process.env.ADMIN_JWT_SECRET || process.env.ADMIN_API_TOKEN
 
-    if (!expectedUsername || !expectedPassword || !adminApiToken) {
+    if (!expectedUsername || !expectedPassword || !adminJwtSecret) {
       return res.status(503).json({
         error: "Admin auth is not configured",
-        details: "Set ADMIN_USERNAME, ADMIN_PASSWORD and ADMIN_API_TOKEN"
+        details: "Set ADMIN_USERNAME, ADMIN_PASSWORD and ADMIN_JWT_SECRET (or ADMIN_API_TOKEN fallback)"
       })
     }
 
@@ -45,10 +46,21 @@ export const loginAdmin = async (req, res) => {
     }
 
     const role = isInvigilatorLogin ? "invigilator" : "admin"
+    const token = jwt.sign(
+      {
+        type: "admin",
+        role,
+      },
+      adminJwtSecret,
+      {
+        subject: normalizedInputUsername,
+        expiresIn: "8h",
+      },
+    )
 
     res.json({
       message: "Login successful",
-      token: adminApiToken,
+      token,
       role
     })
   } catch (error) {

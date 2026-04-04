@@ -3,6 +3,11 @@ import { normalizeQuestSchedule, getQuestStartAtMs } from "../utils/questTiming.
 import { readFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  invalidateQuestContentCache,
+  invalidateQuestRankingCache,
+  scheduleQuestDistributionBroadcast,
+} from "./gameController.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -183,9 +188,21 @@ export const blockUser = async (req, res) => {
         .where("userId", "==", String(userId))
         .get()
 
+      const affectedQuestIds = new Set()
+
       for (const doc of progressSnapshot.docs) {
+        const progressData = doc.data() || {}
+        if (progressData.questId) {
+          affectedQuestIds.add(String(progressData.questId))
+        }
         await doc.ref.delete()
       }
+
+      affectedQuestIds.forEach((questId) => {
+        invalidateQuestContentCache(questId)
+        invalidateQuestRankingCache(questId)
+        scheduleQuestDistributionBroadcast(req.io, questId)
+      })
     }
 
     if (req.io) {
@@ -198,9 +215,19 @@ export const blockUser = async (req, res) => {
           : "You have been unblocked by the invigilator.",
       })
     }
+                  const affectedQuestIds = new Set()
+                  for (const doc of progressSnapshot.docs) {
+                    const progressData = doc.data() || {}
+                    if (progressData.questId) {
+                      affectedQuestIds.add(String(progressData.questId))
+                    }
+                    await doc.ref.delete()
+                  }
 
-    res.json({ message: shouldBlock ? "User blocked" : "User unblocked" })
-  } catch (error) {
+                  affectedQuestIds.forEach((questId) => {
+                    invalidateQuestRankingCache(questId)
+                    scheduleQuestDistributionBroadcast(req.io, questId)
+                  })
     console.error("Error blocking user:", error)
     res.status(500).json({ error: "Failed to block user" })
   }
@@ -401,6 +428,9 @@ export const addQuest = async (req, res) => {
       action: "created",
       quest: { id: docRef.id, ...normalizeQuestSchedule(quest) }
     })
+
+    invalidateQuestContentCache(docRef.id)
+    invalidateQuestRankingCache(docRef.id)
   } catch (error) {
     console.error("Error adding quest:", error)
     res.status(500).json({ error: "Failed to add quest" })
@@ -477,6 +507,9 @@ export const updateQuest = async (req, res) => {
         updatedAt: new Date()
       }
     })
+
+    invalidateQuestContentCache(questId)
+    invalidateQuestRankingCache(questId)
   } catch (error) {
     console.error("Error updating quest:", error)
     res.status(500).json({ error: "Failed to update quest" })
@@ -509,6 +542,9 @@ export const deleteQuest = async (req, res) => {
       action: "deleted",
       questId
     })
+
+    invalidateQuestContentCache(questId)
+    invalidateQuestRankingCache(questId)
 
     res.json({
       message: "Quest deleted successfully",
@@ -621,6 +657,10 @@ export const addQuestion = async (req, res) => {
 
     const docRef = await db.collection(dbConfig.COLLECTIONS.QUESTIONS).add(question)
 
+    invalidateQuestContentCache(String(questId))
+    invalidateQuestRankingCache(String(questId))
+    scheduleQuestDistributionBroadcast(req.io, String(questId))
+
     res.status(201).json({
       message: "Question added successfully",
       question: {
@@ -713,6 +753,10 @@ export const updateQuestion = async (req, res) => {
 
     await db.collection(dbConfig.COLLECTIONS.QUESTIONS).doc(questionId).update(updates)
 
+    invalidateQuestContentCache(String(questId))
+    invalidateQuestRankingCache(String(questId))
+    scheduleQuestDistributionBroadcast(req.io, String(questId))
+
     res.json({ message: "Question updated successfully", questionId })
   } catch (error) {
     console.error("Error updating question:", error)
@@ -729,7 +773,20 @@ export const deleteQuestion = async (req, res) => {
       return res.status(400).json({ error: "questionId is required" })
     }
 
+    const existingQuestion = await db
+      .collection(dbConfig.COLLECTIONS.QUESTIONS)
+      .doc(questionId)
+      .get()
+
+    const existingQuestionData = existingQuestion.exists ? existingQuestion.data() || {} : {}
+
     await db.collection(dbConfig.COLLECTIONS.QUESTIONS).doc(questionId).delete()
+
+    if (existingQuestionData.questId) {
+      invalidateQuestContentCache(String(existingQuestionData.questId))
+      invalidateQuestRankingCache(String(existingQuestionData.questId))
+      scheduleQuestDistributionBroadcast(req.io, String(existingQuestionData.questId))
+    }
 
     res.json({ message: "Question deleted successfully", questionId })
   } catch (error) {

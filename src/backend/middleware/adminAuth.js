@@ -1,4 +1,5 @@
 import dotenv from "dotenv"
+import jwt from "jsonwebtoken"
 
 dotenv.config()
 
@@ -13,36 +14,36 @@ const getTokenFromHeaders = (req) => {
   return bearerToken || adminTokenHeader
 }
 
-const getRoleFromHeaders = (req) => {
-  const roleHeader = req.headers["x-admin-role"] || req.headers["x-user-role"] || ""
-  const normalizedRole = String(roleHeader).trim().toLowerCase()
-
-  if (normalizedRole === "admin" || normalizedRole === "invigilator") {
-    return normalizedRole
-  }
-
-  return "admin"
-}
-
 export const adminAuth = (req, res, next) => {
-  const expectedToken = process.env.ADMIN_API_TOKEN
+  const jwtSecret = process.env.ADMIN_JWT_SECRET || process.env.ADMIN_API_TOKEN
 
-  if (!expectedToken) {
+  if (!jwtSecret) {
     return res.status(503).json({
       error: "Admin API is not configured",
-      details: "Set ADMIN_API_TOKEN in server environment"
+      details: "Set ADMIN_JWT_SECRET (or ADMIN_API_TOKEN fallback) in server environment"
     })
   }
 
   const receivedToken = getTokenFromHeaders(req)
 
-  if (!receivedToken || receivedToken !== expectedToken) {
+  if (!receivedToken) {
     return res.status(401).json({ error: "Unauthorized admin request" })
   }
 
-  req.adminRole = getRoleFromHeaders(req)
+  try {
+    const payload = jwt.verify(receivedToken, jwtSecret)
+    const role = String(payload?.role || "").trim().toLowerCase()
 
-  next()
+    if (payload?.type !== "admin" || (role !== "admin" && role !== "invigilator")) {
+      return res.status(401).json({ error: "Unauthorized admin request" })
+    }
+
+    req.adminRole = role
+    req.adminTokenPayload = payload
+    next()
+  } catch (error) {
+    return res.status(401).json({ error: "Unauthorized admin request" })
+  }
 }
 
 export const requireRoles = (allowedRoles = []) => (req, res, next) => {

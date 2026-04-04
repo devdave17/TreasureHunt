@@ -5,6 +5,7 @@ import {
 } from "../utils/questTiming.js";
 import process from "node:process";
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -74,7 +75,111 @@ const getQuestProgressDocRef = (userId, questId) => {
   return db.collection(dbConfig.COLLECTIONS.QUEST_PROGRESS).doc(progressId);
 };
 
+const getQuestRoomName = (questId) => `quest:${String(questId || "").trim()}`;
+
 const questDistributionTimers = new Map();
+const questRankingCache = new Map();
+const publicQuestsCache = {
+  payload: null,
+  expiresAt: 0,
+};
+const publicQuestQuestionsCache = new Map();
+
+export const invalidateQuestContentCache = (questId) => {
+  publicQuestsCache.payload = null;
+  publicQuestsCache.expiresAt = 0;
+
+  const normalizedQuestId = String(questId || "").trim();
+  if (normalizedQuestId) {
+    publicQuestQuestionsCache.delete(normalizedQuestId);
+  }
+};
+
+export const invalidateQuestRankingCache = (questId) => {
+  const normalizedQuestId = String(questId || "").trim();
+  if (!normalizedQuestId) {
+    return;
+  }
+
+  questRankingCache.delete(normalizedQuestId);
+};
+
+const getCachedPublicQuests = () => {
+  if (!publicQuestsCache.payload || publicQuestsCache.expiresAt <= Date.now()) {
+    publicQuestsCache.payload = null;
+    publicQuestsCache.expiresAt = 0;
+    return null;
+  }
+
+  return publicQuestsCache.payload;
+};
+
+const setCachedPublicQuests = (payload) => {
+  publicQuestsCache.payload = payload;
+  publicQuestsCache.expiresAt = Date.now() + 300000;
+};
+
+const getCachedPublicQuestQuestions = (questId) => {
+  const normalizedQuestId = String(questId || "").trim();
+  if (!normalizedQuestId) {
+    return null;
+  }
+
+  const cachedEntry = publicQuestQuestionsCache.get(normalizedQuestId);
+  if (!cachedEntry) {
+    return null;
+  }
+
+  if (cachedEntry.expiresAt <= Date.now()) {
+    publicQuestQuestionsCache.delete(normalizedQuestId);
+    return null;
+  }
+
+  return cachedEntry.payload;
+};
+
+const setCachedPublicQuestQuestions = (questId, payload) => {
+  const normalizedQuestId = String(questId || "").trim();
+  if (!normalizedQuestId) {
+    return;
+  }
+
+  publicQuestQuestionsCache.set(normalizedQuestId, {
+    payload,
+    expiresAt: Date.now() + 300000,
+  });
+};
+
+const getCachedQuestRanking = (questId) => {
+  const normalizedQuestId = String(questId || "").trim();
+  if (!normalizedQuestId) {
+    return null;
+  }
+
+  const cachedEntry = questRankingCache.get(normalizedQuestId);
+  if (!cachedEntry) {
+    return null;
+  }
+
+  if (cachedEntry.expiresAt <= Date.now()) {
+    questRankingCache.delete(normalizedQuestId);
+    return null;
+  }
+
+  return cachedEntry.payload;
+};
+
+const setCachedQuestRanking = (questId, payload) => {
+  const normalizedQuestId = String(questId || "").trim();
+  if (!normalizedQuestId) {
+    return;
+  }
+
+  questRankingCache.set(normalizedQuestId, {
+    payload,
+    expiresAt: Date.now() + 5000,
+  });
+};
 
 const computeQuestLevelDistribution = async (questId) => {
   const normalizedQuestId = String(questId || "").trim();
@@ -159,7 +264,7 @@ const computeQuestLevelDistribution = async (questId) => {
   };
 };
 
-const scheduleQuestDistributionBroadcast = (io, questId) => {
+export const scheduleQuestDistributionBroadcast = (io, questId) => {
   if (!io || !questId) {
     return;
   }
@@ -174,7 +279,7 @@ const scheduleQuestDistributionBroadcast = (io, questId) => {
 
     try {
       const distribution = await computeQuestLevelDistribution(normalizedQuestId);
-      io.emit("quest-level-distribution", distribution);
+      io.to(getQuestRoomName(normalizedQuestId)).emit("quest-level-distribution", distribution);
     } catch (error) {
       console.error("Error broadcasting quest level distribution:", error);
     }
@@ -326,10 +431,33 @@ export const loginPlayer = async (req, res) => {
         .json({ error: "Your account is blocked. Contact admin." });
     }
 
+    const playerJwtSecret =
+      process.env.PLAYER_JWT_SECRET || process.env.PLAYER_MASTER_PASSWORD || "";
+
+    if (!playerJwtSecret) {
+      return res
+        .status(503)
+        .json({ error: "Server misconfigured. Set PLAYER_JWT_SECRET." });
+    }
+
+    const playerId = String(snapshot.docs[0].id);
+    const token = jwt.sign(
+      {
+        type: "player",
+        role: "player",
+      },
+      playerJwtSecret,
+      {
+        subject: playerId,
+        expiresIn: "6h",
+      },
+    );
+
     res.json({
       message: "Login successful",
+      token,
       player: {
-        id: snapshot.docs[0].id,
+        id: playerId,
         email: player.email || normalizedEmail,
         name: player.name || "",
         score: Number(player.score) || 0,
@@ -348,6 +476,11 @@ export const loginPlayer = async (req, res) => {
 
 export const getPublicQuests = async (req, res) => {
   try {
+    const cachedQuests = getCachedPublicQuests();
+    if (cachedQuests) {
+      return res.json(cachedQuests);
+    }
+
     const snapshot = await db.collection(dbConfig.COLLECTIONS.QUESTS).get();
 
     const quests = snapshot.docs
@@ -365,6 +498,8 @@ export const getPublicQuests = async (req, res) => {
       }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 
+    setCachedPublicQuests(quests);
+
     res.json(quests);
   } catch (error) {
     console.error("Error fetching public quests:", error);
@@ -378,6 +513,11 @@ export const getPublicQuestQuestions = async (req, res) => {
 
     if (!questId) {
       return res.status(400).json({ error: "questId is required" });
+    }
+
+    const cachedQuestQuestions = getCachedPublicQuestQuestions(questId);
+    if (cachedQuestQuestions) {
+      return res.json(cachedQuestQuestions);
     }
 
     const questDoc = await db
@@ -410,7 +550,7 @@ export const getPublicQuestQuestions = async (req, res) => {
       order: index + 1,
     }));
 
-    res.json({
+    const responsePayload = {
       quest: {
         id: questDoc.id,
         name: questDoc.data()?.name || "Untitled Quest",
@@ -419,7 +559,10 @@ export const getPublicQuestQuestions = async (req, res) => {
         startAtMs: getQuestStartAtMs(questDoc.data() || {}),
       },
       questions,
-    });
+    };
+
+    setCachedPublicQuestQuestions(questId, responsePayload);
+    res.json(responsePayload);
   } catch (error) {
     console.error("Error fetching public quest questions:", error);
     res.status(500).json({ error: "Failed to fetch questions" });
@@ -432,6 +575,11 @@ export const getQuestRanking = async (req, res) => {
 
     if (!questId) {
       return res.status(400).json({ error: "questId is required" });
+    }
+
+    const cachedRanking = getCachedQuestRanking(questId);
+    if (cachedRanking) {
+      return res.json(cachedRanking);
     }
 
     const questDoc = await db
@@ -551,7 +699,7 @@ export const getQuestRanking = async (req, res) => {
       .where("questId", "==", String(questId))
       .get();
 
-    res.json({
+    const responsePayload = {
       quest: {
         id: questDoc.id,
         name: questData.name || "Untitled Quest",
@@ -565,7 +713,10 @@ export const getQuestRanking = async (req, res) => {
         completedCount: rankings.filter((row) => row.solvedQuestions > 0).length,
       },
       rankings,
-    });
+    };
+
+    setCachedQuestRanking(questId, responsePayload);
+    res.json(responsePayload);
   } catch (error) {
     console.error("Error fetching quest ranking:", error);
     res.status(500).json({ error: "Failed to fetch ranking" });
@@ -589,7 +740,8 @@ export const getQuestLevelDistribution = async (req, res) => {
 
 export const updatePlayerProgress = async (req, res) => {
   try {
-    const { userId, questId, questionId, level, points } = req.body || {};
+    const { questId, questionId, level, points } = req.body || {};
+    const userId = String(req.playerId || "");
 
     console.log("[updatePlayerProgress] request", {
       userId,
@@ -700,6 +852,7 @@ export const updatePlayerProgress = async (req, res) => {
     };
 
     await questProgressRef.set(updatedProgress, { merge: true });
+    invalidateQuestRankingCache(questId);
     scheduleQuestDistributionBroadcast(req.io, questId);
 
     console.log("[updatePlayerProgress] saved", {
@@ -722,7 +875,8 @@ export const updatePlayerProgress = async (req, res) => {
 
 export const startQuestionTimer = async (req, res) => {
   try {
-    const { userId, level, questId } = req.body || {};
+    const { level, questId } = req.body || {};
+    const userId = String(req.playerId || "");
 
     console.log("[startQuestionTimer] request", {
       userId,
@@ -784,6 +938,7 @@ export const startQuestionTimer = async (req, res) => {
 
     // Starting a quest should always create a fresh attempt for that quest.
     await questProgressRef.set(questProgress);
+    invalidateQuestRankingCache(questId);
     scheduleQuestDistributionBroadcast(req.io, questId);
 
     console.log("[startQuestionTimer] saved", {
@@ -808,7 +963,7 @@ export const startQuestionTimer = async (req, res) => {
 
 export const getUserProgress = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = String(req.playerId || "");
     const { questId } = req.query || {};
 
     if (!userId) {
@@ -850,12 +1005,12 @@ export const finalizeQuestAttempt = async (req, res) => {
   try {
     const { questId } = req.params || {};
     const {
-      userId,
       reason = "manual",
       solvedCount,
       totalQuestions,
       currentLevel,
     } = req.body || {};
+    const userId = String(req.playerId || "");
 
     if (!questId || !userId) {
       return res.status(400).json({ error: "questId and userId are required" });
@@ -920,6 +1075,7 @@ export const finalizeQuestAttempt = async (req, res) => {
     }
 
     await questProgressRef.set(updatedProgress, { merge: true });
+    invalidateQuestRankingCache(questId);
     scheduleQuestDistributionBroadcast(req.io, questId);
 
     return res.json({
@@ -939,7 +1095,8 @@ export const finalizeQuestAttempt = async (req, res) => {
 export const validateQuestAnswer = async (req, res) => {
   try {
     const { questId, questionId } = req.params;
-    const { answer, userId } = req.body || {};
+    const { answer } = req.body || {};
+    const userId = String(req.playerId || "");
 
     console.log("[validateQuestAnswer] request", {
       questId,
