@@ -2,6 +2,7 @@ import React from "react";
 
 const WinnerScreen = ({
   onReset,
+  onExit,
   isTimeExpired,
   isBlockedByInvigilator = false,
   finalElapsedSeconds,
@@ -116,6 +117,9 @@ const WinnerScreen = ({
       <div className="btn-group" style={{ justifyContent: "center", gap: "1rem" }}>
         <button className="btn-primary" onClick={onReset}>
           Go Back
+        </button>
+        <button className="btn-secondary" onClick={onExit || onReset}>
+          Exit
         </button>
       </div>
       <div

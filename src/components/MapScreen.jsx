@@ -166,6 +166,7 @@ const MapScreen = ({ solvedCount, activeRiddle, onNodeClick, onExit, questions =
           <button className="btn-secondary map-exit-btn" onClick={onExit}>
             ⟵ Exit
           </button>
+
         </div>
       </div>
 

@@ -70,6 +70,14 @@ const RiddleScreen = ({
         </div>
       </div>
 
+      {isSolved && (
+        <div className="btn-group" style={{ justifyContent: "center" }}>
+          <button className="btn-secondary" onClick={onBack}>
+            Exit to Map
+          </button>
+        </div>
+      )}
+
       {!isSolved && (
         <div className="key-output-panel">
           <div className="input-group">

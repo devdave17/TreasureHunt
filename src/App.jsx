@@ -18,6 +18,36 @@ const GAME_API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const PLAYER_SESSION_KEY = "treasurehunt_player_session";
 
+const getPlayedQuestSessionKey = (playerId) =>
+  `treasurehunt_played_quests_${String(playerId || "guest")}`;
+
+const getPlayedQuestSetForSession = (playerId) => {
+  try {
+    const raw = sessionStorage.getItem(getPlayedQuestSessionKey(playerId));
+    const parsed = JSON.parse(raw || "[]");
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+    return new Set(parsed.map((id) => String(id)).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+};
+
+const markQuestPlayedInSession = (playerId, questId) => {
+  const safeQuestId = String(questId || "").trim();
+  if (!safeQuestId) {
+    return;
+  }
+
+  const playedSet = getPlayedQuestSetForSession(playerId);
+  playedSet.add(safeQuestId);
+  sessionStorage.setItem(
+    getPlayedQuestSessionKey(playerId),
+    JSON.stringify(Array.from(playedSet)),
+  );
+};
+
 const toRoman = (num) => {
   const romans = [
     "I",
@@ -93,6 +123,9 @@ const App = () => {
   const [isSubmittingRiddle, setIsSubmittingRiddle] = useState(false);
   const [finalElapsedSeconds, setFinalElapsedSeconds] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showReplayWarning, setShowReplayWarning] = useState(false);
+  const [pendingQuestLaunchId, setPendingQuestLaunchId] = useState("");
+  const [replayWarningQuestName, setReplayWarningQuestName] = useState("");
   const [isBlockedByInvigilator, setIsBlockedByInvigilator] = useState(false);
   const [showBlockedPopup, setShowBlockedPopup] = useState(false);
   const hasAutoSubmittedRef = useRef(false);
@@ -103,7 +136,6 @@ const App = () => {
   const handleBlockedByInvigilator = (message) => {
     setIsBlockedByInvigilator(true);
     setShowBlockedPopup(true);
-    setShowExitConfirm(false);
     setRiddleSubmitError("");
     setSolvedCount(0);
     setFinalElapsedSeconds(null);
@@ -369,6 +401,10 @@ const App = () => {
 
       setUserDetails(nextUser);
       localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(nextUser));
+      sessionStorage.setItem(
+        getPlayedQuestSessionKey(nextUser.id),
+        JSON.stringify([]),
+      );
 
       // Save player token for API calls
       if (token) {
@@ -385,7 +421,8 @@ const App = () => {
     }
   };
 
-  const launchSelectedQuest = async (questId) => {
+  const launchSelectedQuest = async (questId, options = {}) => {
+    const skipReplayWarning = Boolean(options?.skipReplayWarning);
     const questToLaunch = questId || selectedQuestId;
     const questMeta =
       quests.find((quest) => quest.id === questToLaunch) || null;
@@ -416,6 +453,16 @@ const App = () => {
     }
 
     setQuestLockNotice(null);
+
+    if (!skipReplayWarning) {
+      const playedQuestSet = getPlayedQuestSetForSession(userDetails.id);
+      if (playedQuestSet.has(String(questToLaunch))) {
+        setPendingQuestLaunchId(String(questToLaunch));
+        setReplayWarningQuestName(questMeta?.name || "this quest");
+        setShowReplayWarning(true);
+        return;
+      }
+    }
 
     if (questToLaunch !== selectedQuestId) {
       setSelectedQuestId(questToLaunch);
@@ -500,6 +547,7 @@ const App = () => {
     setIsLaunchingQuest(false);
     goScreen("screen-map");
     hasAutoSubmittedRef.current = false;
+    markQuestPlayedInSession(userDetails.id, questToLaunch);
 
     if (socketRef.current) {
       socketRef.current.emit("join-quest-room", String(questToLaunch));
@@ -518,7 +566,9 @@ const App = () => {
     setRiddleSubmitError("");
     setCurrentRiddle(riddle);
     setIsSolvedRiddle(isSolved);
-    setActiveRiddle(riddleNum);
+    if (!isSolved) {
+      setActiveRiddle(riddleNum);
+    }
     goScreen("screen-riddle");
   };
 
@@ -629,6 +679,9 @@ const App = () => {
     setIsLaunchingQuest(false);
     setQuestLockNotice(null);
     setShowExitConfirm(false);
+    setShowReplayWarning(false);
+    setPendingQuestLaunchId("");
+    setReplayWarningQuestName("");
     setIsBlockedByInvigilator(false);
     setShowBlockedPopup(false);
     hasAutoSubmittedRef.current = false;
@@ -650,6 +703,22 @@ const App = () => {
       }
     }
     resetGame();
+  };
+
+  const handleCancelReplayWarning = () => {
+    setShowReplayWarning(false);
+    setPendingQuestLaunchId("");
+    setReplayWarningQuestName("");
+  };
+
+  const handleConfirmReplayWarning = () => {
+    const nextQuestId = pendingQuestLaunchId || selectedQuestId;
+    setShowReplayWarning(false);
+    setPendingQuestLaunchId("");
+    setReplayWarningQuestName("");
+    if (nextQuestId) {
+      void launchSelectedQuest(nextQuestId, { skipReplayWarning: true });
+    }
   };
 
   const handleBackToLanding = () => {
@@ -782,6 +851,7 @@ const App = () => {
       >
         <WinnerScreen
           onReset={resetGame}
+          onExit={resetGame}
           animation={true}
           isTimeExpired={isTimeExpired}
           isBlockedByInvigilator={isBlockedByInvigilator}
@@ -809,6 +879,27 @@ const App = () => {
         </div>
       )}
 
+      {showReplayWarning && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="replay-warning-title">
+          <div className="profile-modal exit-confirm-modal anim-reveal">
+            <div className="exit-confirm-heading" id="replay-warning-title">Warning: Quest Already Played</div>
+            <p className="exit-confirm-message">
+              You have already played {replayWarningQuestName || "this quest"} in this login session.
+              If you play it again, your current stats may reset and it can affect your ranking.
+              Do you still want to continue?
+            </p>
+            <div className="exit-confirm-actions">
+              <button className="btn-primary" onClick={handleConfirmReplayWarning}>
+                Yes, Play Again
+              </button>
+              <button className="btn-secondary" onClick={handleCancelReplayWarning}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showExitConfirm && (
         <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="exit-confirm-title">
           <div className="profile-modal exit-confirm-modal anim-reveal">
@@ -828,6 +919,7 @@ const App = () => {
           </div>
         </div>
       )}
+
     </>
   );
 };
