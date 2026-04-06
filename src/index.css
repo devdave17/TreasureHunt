@@ -2007,15 +2007,91 @@ body::before {
 }
 
 @media (max-width: 720px) {
+  #screen-ranking {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .ranking-shell {
+    max-width: 100%;
+  }
+
+  .ranking-hero {
+    gap: 0.6rem;
+  }
+
+  .ranking-kicker {
+    font-size: 0.65rem;
+  }
+
+  .ranking-title {
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+  }
+
+  .ranking-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .ranking-meta {
+    gap: 0.5rem;
+  }
+
+  .ranking-pill {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.65rem;
+  }
+
   .ranking-card {
     flex-direction: column;
     align-items: stretch;
+    padding: 0.8rem;
+    gap: 0.8rem;
+  }
+
+  .ranking-card-left {
+    gap: 0.7rem;
+  }
+
+  .ranking-card-left h2 {
+    font-size: 0.95rem;
+  }
+
+  .ranking-card-left p {
+    font-size: 0.75rem;
+  }
+
+  .ranking-rank-badge {
+    width: 48px;
+  }
+
+  .ranking-rank-medal {
+    width: 60px;
+    height: 60px;
+  }
+
+  .ranking-rank {
+    width: 42px;
+    height: 42px;
+    font-size: 0.9rem;
   }
 
   .ranking-card-right {
-    justify-content: space-between;
-    text-align: left;
-    gap: 0.8rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+    text-align: center;
+  }
+
+  .ranking-card-right div {
+    min-width: auto;
+  }
+
+  .ranking-card-right span {
+    font-size: 0.6rem;
+  }
+
+  .ranking-card-right strong {
+    font-size: 0.9rem;
   }
 
   .ranking-toolbar {
@@ -2027,13 +2103,119 @@ body::before {
   }
 
   .ranking-modal {
-    padding: 1rem;
-    max-height: calc(100vh - 2rem);
+    padding: 0.8rem;
+    max-height: calc(100vh - 1rem);
+    width: calc(100vw - 1rem);
   }
 
   .ranking-modal-header {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.8rem;
+  }
+
+  .ranking-modal-header button {
+    width: 100%;
+  }
+
+  .ranking-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-info-card {
+    padding: 0.7rem;
+  }
+
+  .ranking-info-card h4 {
+    font-size: 0.7rem;
+  }
+
+  .ranking-info-card p {
+    font-size: 0.8rem;
+  }
+
+  .ranking-breakdown-table {
+    font-size: 0.8rem;
+  }
+
+  .ranking-breakdown-table th,
+  .ranking-breakdown-table td {
+    padding: 0.4rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #screen-ranking {
+    padding: 0.75rem;
+  }
+
+  .ranking-title {
+    font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+  }
+
+  .ranking-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .ranking-pill {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.6rem;
+  }
+
+  .ranking-card {
+    padding: 0.7rem;
+  }
+
+  .ranking-card-left h2 {
+    font-size: 0.85rem;
+  }
+
+  .ranking-card-left p {
+    font-size: 0.7rem;
+  }
+
+  .ranking-rank-medal {
+    width: 50px;
+    height: 50px;
+  }
+
+  .ranking-rank {
+    width: 38px;
+    height: 38px;
+    font-size: 0.8rem;
+  }
+
+  .ranking-card-right strong {
+    font-size: 0.8rem;
+  }
+
+  .ranking-modal {
+    padding: 0.7rem;
+    max-height: calc(100vh - 0.75rem);
+    width: calc(100vw - 0.75rem);
+  }
+
+  .ranking-modal-header h3 {
+    font-size: 1rem;
+  }
+
+  .ranking-info-card {
+    padding: 0.6rem;
+  }
+
+  .ranking-info-card h4 {
+    font-size: 0.65rem;
+  }
+
+  .ranking-info-card p {
+    font-size: 0.75rem;
+  }
+
+  .ranking-breakdown-table th,
+  .ranking-breakdown-table td {
+    padding: 0.3rem;
+    font-size: 0.7rem;
   }
 }
 
