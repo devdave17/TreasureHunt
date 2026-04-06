@@ -1,15 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { gameApi } from "../services/gameApi";
-import { formatCountdownLabel } from "../utils/questTiming.js";
-
-const formatTimeLabel = (seconds) => {
-  if (!Number.isFinite(seconds)) {
-    return "--";
-  }
-
-  return formatCountdownLabel(seconds);
-};
 
 const formatTimestamp = (value) => {
   if (!value) {
@@ -206,10 +197,6 @@ function RankingScreen({ questId, onBack }) {
                     <div>
                       <span>Solved</span>
                       <strong>{row.solvedQuestions}</strong>
-                    </div>
-                    <div>
-                      <span>Time</span>
-                      <strong>{formatTimeLabel(row.totalCompletionSeconds)}</strong>
                     </div>
                   </div>
                 </article>
