@@ -123,6 +123,9 @@ function RankingScreen({ questId, onBack }) {
           <p className="ranking-subtitle">
             {quest?.description || "Quest-wide results are shown here for direct sharing."}
           </p>
+          <p className="ranking-formula">
+            Total Score = (Map Score × 20%) + (HR Score × 80%)
+          </p>
 
           <div className="ranking-meta">
             <span className="ranking-pill">{quest?.code || "No Code"}</span>
@@ -187,11 +190,11 @@ function RankingScreen({ questId, onBack }) {
                       <strong>{Number(row.totalScore) || 0}</strong>
                     </div>
                     <div>
-                      <span>Map Score</span>
+                      <span>Map Score (20%)</span>
                       <strong>{Number(row.mapScore) || 0}</strong>
                     </div>
                     <div>
-                      <span>Hacker Rank Score</span>
+                      <span>HR Score (80%)</span>
                       <strong>{Number(row.hackerRankScore) || 0}</strong>
                     </div>
                     <div>

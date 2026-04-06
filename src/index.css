@@ -1681,6 +1681,17 @@ body::before {
   font-size: 1.02rem;
 }
 
+.ranking-formula {
+  max-width: 780px;
+  color: var(--gold-light);
+  font-family: "Share Tech Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  opacity: 0.95;
+}
+
 .ranking-meta {
   display: flex;
   flex-wrap: wrap;
@@ -2030,6 +2041,10 @@ body::before {
 
   .ranking-subtitle {
     font-size: 0.9rem;
+  }
+
+  .ranking-formula {
+    font-size: 0.75rem;
   }
 
   .ranking-meta {
