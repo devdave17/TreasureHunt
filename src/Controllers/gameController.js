@@ -14,6 +14,20 @@ const normalizeEmail = (email) =>
     .trim()
     .toLowerCase();
 
+const normalizeHackerRankScore = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+
+  return Math.round(parsed * 100) / 100;
+};
+
+const calculateWeightedTotalScore = (mapScore, hackerRankScore) => {
+  const weighted = (Number(mapScore) || 0) * 0.2 + (Number(hackerRankScore) || 0) * 0.8;
+  return Math.round(weighted * 100) / 100;
+};
+
 const sortQuestions = (questions) => {
   return [...questions].sort((a, b) => {
     const aLevel = Number(a.level) || 0;
@@ -635,7 +649,9 @@ export const getQuestRanking = async (req, res) => {
           })
           .filter((level) => Number.isFinite(level))
           .sort((a, b) => a - b);
-        const totalScore = Number(progress.totalScore) || Number(progress.score) || 0;
+        const mapScore = Number(progress.totalScore) || Number(progress.score) || 0;
+        const hackerRankScore = normalizeHackerRankScore(progress.HackerRank_score);
+        const totalScore = calculateWeightedTotalScore(mapScore, hackerRankScore);
         const elapsedSeconds = getQuestElapsedSeconds(progress);
         const userData = userMap.get(String(progress.userId || "").trim()) || {};
         const questionCompletionSeconds =
@@ -649,6 +665,9 @@ export const getQuestRanking = async (req, res) => {
           name: String(userData.name || progress.playerName || "Unknown player"),
           email: String(userData.email || progress.playerEmail || ""),
           progressId: progress.id,
+          mapScore,
+          hackerRankScore,
+          totalCombinedScore: mapScore + hackerRankScore,
           totalScore,
           solvedQuestions: normalizedCompletedLevels.length,
           totalCompletionSeconds:
@@ -670,24 +689,11 @@ export const getQuestRanking = async (req, res) => {
           return b.totalScore - a.totalScore;
         }
 
-        if (b.solvedQuestions !== a.solvedQuestions) {
-          return b.solvedQuestions - a.solvedQuestions;
+        if (b.hackerRankScore !== a.hackerRankScore) {
+          return b.hackerRankScore - a.hackerRankScore;
         }
 
-        const aTime = Number.isFinite(a.totalCompletionSeconds)
-          ? a.totalCompletionSeconds
-          : Number.POSITIVE_INFINITY;
-        const bTime = Number.isFinite(b.totalCompletionSeconds)
-          ? b.totalCompletionSeconds
-          : Number.POSITIVE_INFINITY;
-
-        if (aTime !== bTime) {
-          return aTime - bTime;
-        }
-
-        const aUpdated = normalizeTimestampLike(a.lastActive) || 0;
-        const bUpdated = normalizeTimestampLike(b.lastActive) || 0;
-        return aUpdated - bUpdated;
+        return String(a.userId || "").localeCompare(String(b.userId || ""));
       })
       .map((row, index) => ({
         ...row,
@@ -838,6 +844,7 @@ export const updatePlayerProgress = async (req, res) => {
       userId: String(userId),
       questId: String(questId),
       questName: String(questProgressData.questName || questData.name || ""),
+      HackerRank_score: normalizeHackerRankScore(questProgressData.HackerRank_score),
       score: totalScore,
       totalScore: totalScore,
       currentQuestionLevel: parsedLevel,
@@ -927,6 +934,7 @@ export const startQuestionTimer = async (req, res) => {
       questStartTime: now,
       currentQuestionLevel: Number(level),
       currentLevel: Number(level),
+      HackerRank_score: 0,
       totalScore: 0,
       score: 0,
       completedQuestionLevels: [],

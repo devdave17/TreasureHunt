@@ -1781,6 +1781,29 @@ body::before {
   text-align: left;
 }
 
+.ranking-rank-badge {
+  width: 58px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.ranking-rank-medal {
+  width: 75px;
+  height: 75px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.32));
+}
+
+.ranking-rank-label {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
 .ranking-rank {
   width: 52px;
   height: 52px;
@@ -1820,6 +1843,8 @@ body::before {
   align-items: center;
   gap: 1rem;
   text-align: right;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .ranking-card-right div {
@@ -1855,7 +1880,7 @@ body::before {
 }
 
 .ranking-modal {
-  width: min(860px, 100%);
+  width: min(1060px, 100%);
   max-height: min(86vh, 920px);
   overflow: auto;
   border: 1px solid #243956;
@@ -1869,6 +1894,13 @@ body::before {
     linear-gradient(170deg, #0f1d31 0%, #09111f 100%);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
   padding: 1.25rem;
+  -ms-overflow-style: none;
+}
+
+.ranking-modal::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .ranking-modal-header {
@@ -1887,7 +1919,7 @@ body::before {
 
 .ranking-modal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 0.9rem;
 }
 
@@ -1912,6 +1944,54 @@ body::before {
   margin: 0 0 0.55rem;
   color: var(--text);
   line-height: 1.45;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.ranking-info-card p strong {
+  color: var(--gold-light);
+}
+
+.ranking-profile-rank {
+  margin-top: 0.45rem;
+}
+
+.ranking-profile-rank-medal {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.ranking-profile-rank-image {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.34));
+}
+
+.ranking-profile-rank-medal p {
+  margin: 0;
+}
+
+.levels-passed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.level-badge-simple {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  border: 1px solid #2a415f;
+  border-radius: 999px;
+  padding: 0.3rem 0.6rem;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 0.76rem;
+  color: var(--text);
+  background: rgba(11, 20, 34, 0.88);
 }
 
 .ranking-time-breakdown {

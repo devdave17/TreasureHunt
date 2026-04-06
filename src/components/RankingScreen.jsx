@@ -51,6 +51,12 @@ const formatSeconds = (seconds) => {
   return `${minutes}m ${String(secs).padStart(2, "0")}s`;
 };
 
+const RANK_MEDAL_IMAGES = {
+  1: "/1%20price.png",
+  2: "/2%20price.png",
+  3: "/3%20price.png",
+};
+
 function RankingScreen({ questId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -103,13 +109,14 @@ function RankingScreen({ questId, onBack }) {
     }
 
     const questionTimes = selectedParticipant.questionCompletionSeconds || {};
+    const isIndexedArray = Array.isArray(questionTimes);
 
     return Object.entries(questionTimes)
       .map(([level, seconds]) => ({
-        level: Number(level),
+        level: isIndexedArray ? Number(level) + 1 : Number(level),
         seconds: Number(seconds) || 0,
       }))
-      .filter((row) => Number.isFinite(row.level))
+      .filter((row) => Number.isFinite(row.level) && row.level > 0)
       .sort((a, b) => a.level - b.level);
   }, [selectedParticipant]);
 
@@ -165,7 +172,18 @@ function RankingScreen({ questId, onBack }) {
                   }}
                 >
                   <div className="ranking-card-left">
-                    <div className="ranking-rank">#{row.rank}</div>
+                    {RANK_MEDAL_IMAGES[row.rank] ? (
+                      <div className="ranking-rank-badge">
+                        <img
+                          src={RANK_MEDAL_IMAGES[row.rank]}
+                          alt={`Rank ${row.rank} medal`}
+                          className="ranking-rank-medal"
+                        />
+                        <span className="ranking-rank-label">#{row.rank}</span>
+                      </div>
+                    ) : (
+                      <div className="ranking-rank">#{row.rank}</div>
+                    )}
                     <div>
                       <h2>{row.name}</h2>
                       <p>{row.email || "No email available"}</p>
@@ -174,8 +192,16 @@ function RankingScreen({ questId, onBack }) {
 
                   <div className="ranking-card-right">
                     <div>
-                      <span>Score</span>
-                      <strong>{row.totalScore}</strong>
+                      <span>Total Score</span>
+                      <strong>{Number(row.totalScore) || 0}</strong>
+                    </div>
+                    <div>
+                      <span>Map Score</span>
+                      <strong>{Number(row.mapScore) || 0}</strong>
+                    </div>
+                    <div>
+                      <span>Hacker Rank Score</span>
+                      <strong>{Number(row.hackerRankScore) || 0}</strong>
                     </div>
                     <div>
                       <span>Solved</span>
@@ -212,12 +238,25 @@ function RankingScreen({ questId, onBack }) {
                   <p><strong>Name:</strong> {selectedParticipant.name || "Unknown player"}</p>
                   <p><strong>Email:</strong> {selectedParticipant.email || "-"}</p>
                   <p><strong>User ID:</strong> {selectedParticipant.userId || "-"}</p>
-                  <p><strong>Rank:</strong> #{selectedParticipant.rank}</p>
+                  {RANK_MEDAL_IMAGES[selectedParticipant.rank] ? (
+                    <div className="ranking-profile-rank ranking-profile-rank-medal">
+                      <img
+                        src={RANK_MEDAL_IMAGES[selectedParticipant.rank]}
+                        alt={`Rank ${selectedParticipant.rank} medal`}
+                        className="ranking-profile-rank-image"
+                      />
+                      <p><strong>Rank:</strong> #{selectedParticipant.rank}</p>
+                    </div>
+                  ) : (
+                    <p><strong>Rank:</strong> #{selectedParticipant.rank}</p>
+                  )}
                 </div>
 
                 <div className="ranking-info-card">
                   <h4>Progress</h4>
                   <p><strong>Total Score:</strong> {Number(selectedParticipant.totalScore) || 0}</p>
+                  <p><strong>Map Score:</strong> {Number(selectedParticipant.mapScore) || 0}</p>
+                  <p><strong>Hacker Rank Score:</strong> {Number(selectedParticipant.hackerRankScore) || 0}</p>
                   <p><strong>Solved Questions:</strong> {Number(selectedParticipant.solvedQuestions) || 0}</p>
                   <p><strong>Current Level:</strong> {Number(selectedParticipant.currentLevel) || 0}</p>
                   <p><strong>Total Time:</strong> {formatSeconds(Number(selectedParticipant.totalCompletionSeconds))}</p>

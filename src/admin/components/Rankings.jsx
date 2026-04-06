@@ -242,7 +242,9 @@ function Rankings({ authToken }) {
                   <th>Rank</th>
                   <th>Name</th>
                   <th>Email</th>
-                  <th>Score</th>
+                  <th>Total Score</th>
+                  <th>Map Score</th>
+                  <th>Hacker Rank Score</th>
                   <th>Solved</th>
                   <th>Total Time</th>
                   <th>Current Level</th>
@@ -260,6 +262,8 @@ function Rankings({ authToken }) {
                     <td>{row.name || "Unknown player"}</td>
                     <td>{row.email || "-"}</td>
                     <td className="score-cell">{Number(row.totalScore) || 0}</td>
+                    <td className="score-cell">{Number(row.mapScore) || 0}</td>
+                    <td className="score-cell">{Number(row.hackerRankScore) || 0}</td>
                     <td>
                       {Number(row.solvedQuestions) || 0}
                       {totalQuestions > 0 ? ` / ${totalQuestions}` : ""}
@@ -301,6 +305,8 @@ function Rankings({ authToken }) {
               <div className="ranking-info-card">
                 <h4>Progress</h4>
                 <p><strong>Total Score:</strong> {Number(selectedParticipant.totalScore) || 0}</p>
+                <p><strong>Map Score:</strong> {Number(selectedParticipant.mapScore) || 0}</p>
+                <p><strong>Hacker Rank Score:</strong> {Number(selectedParticipant.hackerRankScore) || 0}</p>
                 <p>
                   <strong>Solved Questions:</strong> {Number(selectedParticipant.solvedQuestions) || 0}
                   {totalQuestions > 0 ? ` / ${totalQuestions}` : ""}

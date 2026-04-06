@@ -205,6 +205,12 @@
       color: #999;
     }
 
+    #error,
+    #content,
+    #empty-state {
+      display: none;
+    }
+
     @media (max-width: 768px) {
       .ranking-header h1 {
         font-size: 1.8em;
@@ -239,22 +245,23 @@
       <div id="loading" class="loading">
         Loading leaderboard...
       </div>
-      <div id="error" class="error" style="display: none;"></div>
-      <div id="content" style="display: none;">
+      <div id="error" class="error"></div>
+      <div id="content">
         <table class="ranking-table">
           <thead>
             <tr>
               <th>Rank</th>
               <th>Player Name</th>
-              <th>Score</th>
+              <th>Total Score</th>
+              <th>Map Score</th>
+              <th>HR Score</th>
               <th>Solved</th>
-              <th>Time Taken</th>
             </tr>
           </thead>
           <tbody id="ranking-tbody">
           </tbody>
         </table>
-        <div id="empty-state" class="empty-state" style="display: none;">
+        <div id="empty-state" class="empty-state">
           <p>No participants yet. Be the first to complete this quest!</p>
         </div>
       </div>
@@ -271,13 +278,6 @@
     function getQuestIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
       return params.get('questId') || 'quest1'; // Default fallback
-    }
-
-    function formatTime(seconds) {
-      if (!Number.isFinite(seconds)) return '--';
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      return `${mins}m ${secs}s`;
     }
 
     function getRankBadgeClass(rank) {
@@ -335,9 +335,10 @@
             const badgeClass = getRankBadgeClass(rank);
             const playerName = player.playerName || player.name || 'Anonymous';
             const playerEmail = player.playerEmail || player.email || '';
-            const score = player.score || 0;
-            const solvedCount = player.solvedCount || 0;
-            const totalSeconds = player.totalSeconds || 0;
+            const totalScore = Number(player.totalScore) || 0;
+            const mapScore = Number(player.mapScore ?? player.score) || 0;
+            const hackerRankScore = Number(player.hackerRankScore ?? player.HackerRank_score) || 0;
+            const solvedCount = Number(player.solvedQuestions ?? player.solvedCount) || 0;
 
             return `
               <tr>
@@ -348,9 +349,10 @@
                   <div class="player-name">${escapeHtml(playerName)}</div>
                   ${playerEmail ? `<div class="player-email">${escapeHtml(playerEmail)}</div>` : ''}
                 </td>
-                <td><div class="score">${score}</div></td>
+                <td><div class="score">${totalScore}</div></td>
+                <td><div class="score">${mapScore}</div></td>
+                <td><div class="score">${hackerRankScore}</div></td>
                 <td>${solvedCount}/${quest.totalQuestions || 0}</td>
-                <td><div class="time-badge">${formatTime(totalSeconds)}</div></td>
               </tr>
             `;
           })
