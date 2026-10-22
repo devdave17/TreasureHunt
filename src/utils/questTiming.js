@@ -60,6 +60,14 @@ export const getQuestDurationSeconds = (quest, fallbackMinutes = 60) => {
   return getQuestDurationMinutes(quest, fallbackMinutes) * 60
 }
 
+export const getQuestEndAtMs = (quest) => {
+  return getQuestStartAtMs(quest) + getQuestDurationSeconds(quest) * 1000
+}
+
+export const getQuestRemainingSeconds = (quest, now = Date.now()) => {
+  return Math.max(0, Math.ceil((getQuestEndAtMs(quest) - now) / 1000))
+}
+
 export const formatCountdownLabel = (secondsTotal) => {
   const totalSeconds = Math.max(0, Math.ceil(Number(secondsTotal) || 0))
   const hours = Math.floor(totalSeconds / 3600)

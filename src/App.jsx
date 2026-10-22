@@ -11,6 +11,7 @@ import Timer from "./components/Timer";
 import { gameApi } from "./services/gameApi";
 import {
   getQuestDurationSeconds,
+  getQuestEndAtMs,
   getQuestStartAtMs,
 } from "./utils/questTiming.js";
 
@@ -98,6 +99,7 @@ const App = () => {
   const [isSolvedRiddle, setIsSolvedRiddle] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(3600);
   const [questTimeLimitSeconds, setQuestTimeLimitSeconds] = useState(3600);
+  const [timerEndAtMs, setTimerEndAtMs] = useState(null);
   const [isTimeExpired, setIsTimeExpired] = useState(false);
   const [userDetails, setUserDetails] = useState({
     id: "",
@@ -311,9 +313,46 @@ const App = () => {
       );
     };
 
+    const onQuestTimerUpdated = (payload = {}) => {
+      const payloadQuestId = String(payload.questId || "");
+      if (
+        !payloadQuestId ||
+        payloadQuestId !== String(activeQuestId || "") ||
+        !Number.isFinite(Number(payload.timerEndAtMs))
+      ) {
+        return;
+      }
+
+      const nextEndAtMs = Number(payload.timerEndAtMs);
+      const nextRemainingSeconds = Math.max(
+        0,
+        Math.ceil((nextEndAtMs - Date.now()) / 1000),
+      );
+      setTimerEndAtMs(nextEndAtMs);
+      setQuestTimeLimitSeconds(
+        Math.max(
+          0,
+          Math.ceil(
+            (nextEndAtMs - Number(payload.startAtMs || Date.now())) / 1000,
+          ),
+        ),
+      );
+      setTimeRemaining(nextRemainingSeconds);
+      setIsTimeExpired(nextRemainingSeconds === 0);
+
+      if (nextRemainingSeconds === 0) {
+        void autoSubmitQuestAttempt("timeout");
+        setFinalElapsedSeconds(
+          Math.max(0, Math.floor((Date.now() - (startTime || Date.now())) / 1000)),
+        );
+        goScreen("screen-winner");
+      }
+    };
+
     socket.on("quest-changed", syncQuestList);
     socket.on("quest-level-distribution", onQuestLevelDistribution);
     socket.on("player-blocked", onPlayerBlocked);
+    socket.on("quest-timer-updated", onQuestTimerUpdated);
 
     return () => {
       const previousRoomQuestId = String(activeQuestId || selectedQuestId || "").trim();
@@ -323,6 +362,7 @@ const App = () => {
       socket.off("quest-changed", syncQuestList);
       socket.off("quest-level-distribution", onQuestLevelDistribution);
       socket.off("player-blocked", onPlayerBlocked);
+      socket.off("quest-timer-updated", onQuestTimerUpdated);
       socket.disconnect();
       if (socketRef.current === socket) {
         socketRef.current = null;
@@ -332,25 +372,29 @@ const App = () => {
 
   // Timer effect
   useEffect(() => {
-    if (startTime && !isTimeExpired && !isBlockedByInvigilator && timeRemaining > 0) {
+    if (timerEndAtMs && !isTimeExpired && !isBlockedByInvigilator) {
       const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            void autoSubmitQuestAttempt("timeout");
-            if (startTime) {
-              setFinalElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
-            }
-            setIsTimeExpired(true);
-            goScreen("screen-winner");
-            return 0;
+        const nextRemainingSeconds = Math.max(
+          0,
+          Math.ceil((timerEndAtMs - Date.now()) / 1000),
+        );
+        setTimeRemaining(nextRemainingSeconds);
+
+        if (nextRemainingSeconds === 0) {
+          void autoSubmitQuestAttempt("timeout");
+          if (startTime) {
+            setFinalElapsedSeconds(
+              Math.max(0, Math.floor((Date.now() - startTime) / 1000)),
+            );
           }
-          return prev - 1;
-        });
+          setIsTimeExpired(true);
+          goScreen("screen-winner");
+        }
       }, 1000);
 
       return () => clearInterval(timer);
     }
-  }, [startTime, isTimeExpired, isBlockedByInvigilator, timeRemaining, activeQuestId, selectedQuestId, userDetails.id, solvedCount, questions.length]);
+  }, [timerEndAtMs, isTimeExpired, isBlockedByInvigilator, startTime]);
 
   const goScreen = (screenId) => {
     setCurrentScreen(screenId);
@@ -472,6 +516,7 @@ const App = () => {
     setQuestError("");
     setQuestLevelCounts({});
 
+    let timerEndAtMsForLaunch = getQuestEndAtMs(questMeta);
     try {
       const response = await fetch(
         `${GAME_API_BASE}/game/quests/${questToLaunch}/questions`,
@@ -493,17 +538,31 @@ const App = () => {
       const firstQuestion = questionList[0];
       if (firstQuestion) {
         try {
-          await gameApi.startQuestionTimer(
+          const timerResponse = await gameApi.startQuestionTimer(
             userDetails.id,
             Number(firstQuestion.level) || 1,
             questIdForTimer,
             localStorage.getItem("player_token"),
           );
+          if (Number.isFinite(Number(timerResponse?.timerEndAtMs))) {
+            timerEndAtMsForLaunch = Number(timerResponse.timerEndAtMs);
+          }
+
+          if (timerResponse?.isTimeExpired) {
+            setQuestError("This quest has already ended.");
+            setIsLaunchingQuest(false);
+            return;
+          }
         } catch (timerError) {
           if (String(timerError?.message || "").toLowerCase().includes("blocked by invigilator")) {
             handleBlockedByInvigilator(
               "You have been blocked by the invigilator due to UMF (Unfair Means).",
             );
+            setIsLaunchingQuest(false);
+            return;
+          }
+          if (String(timerError?.message || "").toLowerCase().includes("already ended")) {
+            setQuestError("This quest has already ended.");
             setIsLaunchingQuest(false);
             return;
           }
@@ -538,7 +597,12 @@ const App = () => {
     setActiveQuestId(String(questToLaunch));
     setSolvedCount(0);
     setActiveRiddle(1);
-    setTimeRemaining(questDurationSeconds);
+    const remainingSeconds = Math.max(
+      0,
+      Math.ceil((timerEndAtMsForLaunch - Date.now()) / 1000),
+    );
+    setTimerEndAtMs(timerEndAtMsForLaunch);
+    setTimeRemaining(remainingSeconds);
     setQuestTimeLimitSeconds(questDurationSeconds);
     setIsTimeExpired(false);
     setFinalElapsedSeconds(null);
@@ -668,6 +732,7 @@ const App = () => {
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
     setTimeRemaining(3600);
+    setTimerEndAtMs(null);
     setQuestTimeLimitSeconds(3600);
     setIsTimeExpired(false);
     setFinalElapsedSeconds(null);
@@ -751,6 +816,7 @@ const App = () => {
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
     setTimeRemaining(3600);
+    setTimerEndAtMs(null);
     setIsTimeExpired(false);
     setFinalElapsedSeconds(null);
     setQuestError("");

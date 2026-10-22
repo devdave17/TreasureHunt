@@ -2,6 +2,7 @@ import { db, dbConfig } from "../backend/database/dbConfig.js";
 import {
   normalizeQuestSchedule,
   getQuestStartAtMs,
+  getQuestEndAtMs,
 } from "../utils/questTiming.js";
 import process from "node:process";
 import dotenv from "dotenv";
@@ -903,6 +904,7 @@ export const startQuestionTimer = async (req, res) => {
     // Get quest duration if questId is provided
     let questDurationMinutes = 60; // Default 60 minutes
     let questName = "";
+    let questData = {};
     if (questId) {
       try {
         const questDoc = await db
@@ -910,7 +912,7 @@ export const startQuestionTimer = async (req, res) => {
           .doc(String(questId))
           .get();
         if (questDoc.exists) {
-          const questData = questDoc.data();
+          questData = questDoc.data() || {};
           questDurationMinutes = Number(questData.durationMinutes) || 60;
           questName = String(questData.name || "");
         }
@@ -925,13 +927,27 @@ export const startQuestionTimer = async (req, res) => {
       path: questProgressRef.path,
     });
     const now = new Date();
+    const questStartAtMs = getQuestStartAtMs({
+      startAtMs: questData?.startAtMs,
+      startAt: questData?.startAt,
+    });
+    const timerEndAtMs = getQuestEndAtMs({
+      startAtMs: questStartAtMs,
+      durationMinutes: questDurationMinutes,
+    });
+
+    if (now.getTime() >= timerEndAtMs) {
+      return res.status(409).json({ error: "This quest has already ended" });
+    }
 
     const questProgress = {
       userId: String(userId),
       questId: String(questId),
       questName: String(questName || ""),
       questionStartTime: now,
-      questStartTime: now,
+      questStartTime: new Date(questStartAtMs),
+      attemptStartedAt: now,
+      timerEndAtMs,
       currentQuestionLevel: Number(level),
       currentLevel: Number(level),
       HackerRank_score: 0,
@@ -960,6 +976,10 @@ export const startQuestionTimer = async (req, res) => {
     res.json({
       message: "Question timer started",
       startTime: now,
+      questStartAtMs,
+      timerEndAtMs,
+      timeRemainingSeconds: Math.max(0, Math.ceil((timerEndAtMs - now.getTime()) / 1000)),
+      isTimeExpired: now.getTime() >= timerEndAtMs,
       questDurationMinutes,
       questProgress,
     });

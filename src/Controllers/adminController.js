@@ -13,6 +13,9 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const DEFAULT_USERS_FILE = resolve(__dirname, "../../data/defaultUsers.json")
 
+const getQuestEndAtMs = (quest) =>
+  getQuestStartAtMs(quest) + (Number(quest?.durationMinutes) || 60) * 60 * 1000
+
 const normalizeUserPayload = (user) => {
   if (!user || typeof user !== "object") {
     return null
@@ -468,6 +471,18 @@ export const updateQuest = async (req, res) => {
       }
     }
 
+    const existingQuestSnapshot = await db
+      .collection(dbConfig.COLLECTIONS.QUESTS)
+      .doc(questId)
+      .get()
+    const existingQuest = existingQuestSnapshot.exists
+      ? existingQuestSnapshot.data() || {}
+      : {}
+    const nowMs = Date.now()
+    const wasRunning =
+      nowMs >= getQuestStartAtMs(existingQuest) &&
+      nowMs < getQuestEndAtMs(existingQuest)
+
     await db.collection(dbConfig.COLLECTIONS.QUESTS).doc(questId).update({
       name: questName,
       code: questCode,
@@ -495,6 +510,16 @@ export const updateQuest = async (req, res) => {
         updatedAt: new Date()
       }
     })
+
+    if (wasRunning) {
+      req.io?.to(`quest:${String(questId)}`).emit("quest-timer-updated", {
+        questId: String(questId),
+        startAtMs: parsedStartAtMs,
+        durationMinutes: parsedDurationMinutes,
+        timerEndAtMs: parsedStartAtMs + parsedDurationMinutes * 60 * 1000,
+        updatedAt: new Date()
+      })
+    }
 
     invalidateQuestContentCache(questId)
     invalidateQuestRankingCache(questId)
