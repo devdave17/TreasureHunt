@@ -13,6 +13,7 @@ import { adminAuth } from "./src/backend/middleware/adminAuth.js"
 import { loginAdmin } from "./src/Controllers/adminAuthController.js"
 import { db } from "./src/backend/database/dbConfig.js"
 import { adminLoginLimiter } from "./src/backend/middleware/rateLimiters.js"
+import { setQuestProgressPresence } from "./src/Controllers/gameController.js"
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5001
@@ -75,6 +76,13 @@ httpServer.listen(PORT, () => {
 })
 
 io.on("connection", (socket) => {
+  socket.on("identify-player", (userId) => {
+    const normalizedUserId = String(userId || "").trim()
+    if (normalizedUserId) {
+      socket.data.playerId = normalizedUserId
+    }
+  })
+
   socket.on("join-quest-room", (questId) => {
     const normalizedQuestId = String(questId || "").trim()
     if (!normalizedQuestId) {
@@ -92,6 +100,30 @@ io.on("connection", (socket) => {
     socket.data.questRoom = nextRoom
   })
 
+  socket.on("resume-quest-room", async (questId) => {
+    const normalizedQuestId = String(questId || "").trim()
+    const currentRoom = socket.data?.questRoom
+    if (
+      !normalizedQuestId ||
+      currentRoom !== `quest:${normalizedQuestId}` ||
+      !socket.data?.playerId
+    ) {
+      return
+    }
+
+    try {
+      await setQuestProgressPresence(
+        io,
+        socket.data.playerId,
+        normalizedQuestId,
+        "active",
+        socket.id,
+      )
+    } catch (error) {
+      console.error("Failed to resume quest presence:", error)
+    }
+  })
+
   socket.on("leave-quest-room", (questId) => {
     const normalizedQuestId = String(questId || "").trim()
     const room = normalizedQuestId ? `quest:${normalizedQuestId}` : socket.data?.questRoom
@@ -105,6 +137,23 @@ io.on("connection", (socket) => {
   })
 
   socket.on("disconnect", () => {
+    const questRoom = socket.data?.questRoom
+    const questId = questRoom?.startsWith("quest:")
+      ? questRoom.slice("quest:".length)
+      : ""
+
+    if (socket.data?.playerId && questId) {
+      void setQuestProgressPresence(
+        io,
+        socket.data.playerId,
+        questId,
+        "abandoned",
+        socket.id,
+      ).catch((error) => {
+        console.error("Failed to mark disconnected quest presence:", error)
+      })
+    }
+
     socket.data.questRoom = null
   })
 })

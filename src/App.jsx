@@ -18,6 +18,7 @@ import {
 const GAME_API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const PLAYER_SESSION_KEY = "treasurehunt_player_session";
+const ACTIVE_QUEST_SESSION_KEY = "treasurehunt_active_quest";
 
 const getPlayedQuestSessionKey = (playerId) =>
   `treasurehunt_played_quests_${String(playerId || "guest")}`;
@@ -132,8 +133,82 @@ const App = () => {
   const [showBlockedPopup, setShowBlockedPopup] = useState(false);
   const hasAutoSubmittedRef = useRef(false);
   const socketRef = useRef(null);
+  const isRecoveringQuestRef = useRef(false);
+  const serverClockRef = useRef(null);
 
   const isPlayerLoggedIn = Boolean(userDetails.email && userDetails.name);
+
+  const syncServerClock = (
+    serverNowMs,
+    clientRequestSentAtMs = Date.now(),
+    clientResponseReceivedAtMs = Date.now(),
+  ) => {
+    const parsedServerNowMs = Number(serverNowMs);
+    if (!Number.isFinite(parsedServerNowMs)) {
+      return;
+    }
+
+    const requestSentMs = Number(clientRequestSentAtMs);
+    const responseReceivedMs = Number(clientResponseReceivedAtMs);
+    const roundTripMs =
+      Number.isFinite(requestSentMs) &&
+      Number.isFinite(responseReceivedMs) &&
+      responseReceivedMs >= requestSentMs
+        ? responseReceivedMs - requestSentMs
+        : 0;
+    const estimatedServerNowMs =
+      parsedServerNowMs + Math.min(roundTripMs / 2, 2000);
+
+    serverClockRef.current = {
+      serverNowMs: estimatedServerNowMs,
+      performanceNowMs: performance.now(),
+    };
+  };
+
+  const getEffectiveServerNowMs = () => {
+    const clock = serverClockRef.current;
+    if (!clock) {
+      return Date.now();
+    }
+
+    return clock.serverNowMs + (performance.now() - clock.performanceNowMs);
+  };
+
+  const refreshQuestLevelDistribution = async (questId, fallbackLevel = 0) => {
+    const normalizedQuestId = String(questId || "").trim();
+    if (!normalizedQuestId) {
+      return;
+    }
+
+    try {
+      const distribution =
+        await gameApi.getQuestLevelDistribution(normalizedQuestId);
+      const counts = Array.isArray(distribution?.counts)
+        ? distribution.counts
+        : [];
+      const nextCounts = {};
+
+      counts.forEach((entry) => {
+        const level = Number(entry.level);
+        const players = Number(entry.players);
+        if (Number.isFinite(level) && level > 0) {
+          nextCounts[level] =
+            Number.isFinite(players) && players > 0 ? players : 0;
+        }
+      });
+
+      const hasActivePlayers = Object.values(nextCounts).some(
+        (count) => Number(count) > 0,
+      );
+      if (!hasActivePlayers && Number(fallbackLevel) > 0) {
+        nextCounts[Number(fallbackLevel)] = 1;
+      }
+
+      setQuestLevelCounts(nextCounts);
+    } catch (error) {
+      console.error("Failed to refresh quest level distribution:", error);
+    }
+  };
 
   const handleBlockedByInvigilator = (message) => {
     setIsBlockedByInvigilator(true);
@@ -180,6 +255,111 @@ const App = () => {
     } catch (error) {
       console.error("Failed to auto-submit quest attempt:", error);
       hasAutoSubmittedRef.current = false;
+    }
+  };
+
+  const recoverActiveQuest = async () => {
+    const storedQuestId = String(
+      localStorage.getItem(ACTIVE_QUEST_SESSION_KEY) || "",
+    ).trim();
+    const questId = String(activeQuestId || storedQuestId).trim();
+
+    if (
+      !questId ||
+      !userDetails.id ||
+      isRecoveringQuestRef.current ||
+      currentScreen === "screen-winner"
+    ) {
+      return;
+    }
+
+    const questMeta = quests.find((quest) => String(quest.id) === questId);
+    if (!questMeta) {
+      return;
+    }
+
+    isRecoveringQuestRef.current = true;
+
+    try {
+      const progressResponse = await gameApi.getUserProgress(
+        userDetails.id,
+        questId,
+        localStorage.getItem("player_token"),
+      );
+      syncServerClock(
+        progressResponse?.serverNowMs,
+        progressResponse?.clientRequestSentAtMs,
+        progressResponse?.clientResponseReceivedAtMs,
+      );
+      const progress = progressResponse?.progress;
+
+      if (!progress || progress.isSubmitted || progress.status === "submitted") {
+        localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
+        return;
+      }
+
+      const questionsResponse = await fetch(
+        `${GAME_API_BASE}/game/quests/${encodeURIComponent(questId)}/questions`,
+      );
+      const questionsPayload = await questionsResponse.json();
+      const questionList = Array.isArray(questionsPayload?.questions)
+        ? questionsPayload.questions
+        : [];
+
+      const nextEndAtMs = getQuestEndAtMs(questMeta);
+      const nextRemainingSeconds = Math.max(
+        0,
+        Math.ceil((nextEndAtMs - getEffectiveServerNowMs()) / 1000),
+      );
+      const completedLevels = Array.isArray(progress.completedQuestionLevels)
+        ? progress.completedQuestionLevels
+        : [];
+      const completedLevelNumbers = new Set(
+        completedLevels
+          .map((entry) =>
+            entry && typeof entry === "object"
+              ? Number(entry.questionLevel || entry.level || entry.currentLevel)
+              : Number(entry),
+          )
+          .filter((level) => Number.isFinite(level) && level > 0),
+      );
+      const nextLevel = Math.max(1, completedLevelNumbers.size + 1);
+
+      setQuestions(questionList);
+      setSelectedQuestId(questId);
+      setActiveQuestId(questId);
+      setActiveRiddle(Math.min(nextLevel, Math.max(questionList.length, 1)));
+      setSolvedCount(completedLevelNumbers.size);
+      const recoveredAttemptStartedAt = progress.attemptStartedAt
+        ? Date.parse(progress.attemptStartedAt)
+        : Date.now();
+      setStartTime(
+        Number.isFinite(recoveredAttemptStartedAt)
+          ? recoveredAttemptStartedAt
+          : Date.now(),
+      );
+      setTimerEndAtMs(nextEndAtMs);
+      setTimeRemaining(nextRemainingSeconds);
+      setQuestTimeLimitSeconds(
+        Math.max(0, Math.ceil((nextEndAtMs - getQuestStartAtMs(questMeta)) / 1000)),
+      );
+      setIsTimeExpired(false);
+      setFinalElapsedSeconds(null);
+      setCurrentRiddle(null);
+      setIsSolvedRiddle(false);
+      hasAutoSubmittedRef.current = false;
+      await refreshQuestLevelDistribution(questId, nextLevel);
+
+      if (socketRef.current) {
+        socketRef.current.emit("join-quest-room", questId);
+        socketRef.current.emit("resume-quest-room", questId);
+      }
+
+      goScreen("screen-map");
+    } catch (error) {
+      console.error("Failed to recover active quest:", error);
+    } finally {
+      isRecoveringQuestRef.current = false;
     }
   };
 
@@ -238,6 +418,25 @@ const App = () => {
       transports: ["websocket"],
     });
     socketRef.current = socket;
+
+    const onSocketConnect = () => {
+      if (userDetails.id) {
+        socket.emit("identify-player", String(userDetails.id));
+      }
+      const questId = String(activeQuestId || selectedQuestId || "").trim();
+      if (questId) {
+        socket.emit("join-quest-room", questId);
+        if (activeQuestId) {
+          socket.emit("resume-quest-room", activeQuestId);
+          void refreshQuestLevelDistribution(questId, activeRiddle);
+        }
+      }
+      void recoverActiveQuest();
+    };
+
+    if (userDetails.id) {
+      socket.emit("identify-player", String(userDetails.id));
+    }
 
     const currentRoomQuestId = String(activeQuestId || selectedQuestId || "").trim();
     if (currentRoomQuestId) {
@@ -324,9 +523,10 @@ const App = () => {
       }
 
       const nextEndAtMs = Number(payload.timerEndAtMs);
+      syncServerClock(payload.serverNowMs);
       const nextRemainingSeconds = Math.max(
         0,
-        Math.ceil((nextEndAtMs - Date.now()) / 1000),
+        Math.ceil((nextEndAtMs - getEffectiveServerNowMs()) / 1000),
       );
       setTimerEndAtMs(nextEndAtMs);
       setQuestTimeLimitSeconds(
@@ -343,7 +543,13 @@ const App = () => {
       if (nextRemainingSeconds === 0) {
         void autoSubmitQuestAttempt("timeout");
         setFinalElapsedSeconds(
-          Math.max(0, Math.floor((Date.now() - (startTime || Date.now())) / 1000)),
+          Math.max(
+            0,
+            Math.floor(
+              (getEffectiveServerNowMs() - (startTime || getEffectiveServerNowMs())) /
+                1000,
+            ),
+          ),
         );
         goScreen("screen-winner");
       }
@@ -353,6 +559,7 @@ const App = () => {
     socket.on("quest-level-distribution", onQuestLevelDistribution);
     socket.on("player-blocked", onPlayerBlocked);
     socket.on("quest-timer-updated", onQuestTimerUpdated);
+    socket.on("connect", onSocketConnect);
 
     return () => {
       const previousRoomQuestId = String(activeQuestId || selectedQuestId || "").trim();
@@ -363,6 +570,7 @@ const App = () => {
       socket.off("quest-level-distribution", onQuestLevelDistribution);
       socket.off("player-blocked", onPlayerBlocked);
       socket.off("quest-timer-updated", onQuestTimerUpdated);
+      socket.off("connect", onSocketConnect);
       socket.disconnect();
       if (socketRef.current === socket) {
         socketRef.current = null;
@@ -370,13 +578,88 @@ const App = () => {
     };
   }, [userDetails.id, activeQuestId, selectedQuestId]);
 
+  useEffect(() => {
+    if (userDetails.id && quests.length > 0 && !activeQuestId) {
+      void recoverActiveQuest();
+    }
+  }, [userDetails.id, quests, activeQuestId]);
+
+  useEffect(() => {
+    const isActiveQuestScreen =
+      activeQuestId &&
+      (currentScreen === "screen-map" || currentScreen === "screen-riddle");
+
+    if (!isActiveQuestScreen) {
+      return undefined;
+    }
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue =
+        "Your current quest progress may be lost if you refresh or leave this page.";
+      return event.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [activeQuestId, currentScreen]);
+
+  useEffect(() => {
+    if (!timerEndAtMs || isBlockedByInvigilator) {
+      return undefined;
+    }
+
+    const syncTimerFromClock = () => {
+      const nextRemainingSeconds = Math.max(
+        0,
+        Math.ceil((timerEndAtMs - getEffectiveServerNowMs()) / 1000),
+      );
+      setTimeRemaining(nextRemainingSeconds);
+
+      if (nextRemainingSeconds === 0 && !isTimeExpired) {
+        void autoSubmitQuestAttempt("timeout");
+        if (startTime) {
+          setFinalElapsedSeconds(
+            Math.max(
+              0,
+              Math.floor((getEffectiveServerNowMs() - startTime) / 1000),
+            ),
+          );
+        }
+        setIsTimeExpired(true);
+        goScreen("screen-winner");
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncTimerFromClock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", syncTimerFromClock);
+    window.addEventListener("pageshow", syncTimerFromClock);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", syncTimerFromClock);
+      window.removeEventListener("pageshow", syncTimerFromClock);
+    };
+  }, [
+    timerEndAtMs,
+    isBlockedByInvigilator,
+    isTimeExpired,
+    startTime,
+  ]);
+
   // Timer effect
   useEffect(() => {
     if (timerEndAtMs && !isTimeExpired && !isBlockedByInvigilator) {
       const timer = setInterval(() => {
         const nextRemainingSeconds = Math.max(
           0,
-          Math.ceil((timerEndAtMs - Date.now()) / 1000),
+          Math.ceil((timerEndAtMs - getEffectiveServerNowMs()) / 1000),
         );
         setTimeRemaining(nextRemainingSeconds);
 
@@ -384,7 +667,10 @@ const App = () => {
           void autoSubmitQuestAttempt("timeout");
           if (startTime) {
             setFinalElapsedSeconds(
-              Math.max(0, Math.floor((Date.now() - startTime) / 1000)),
+              Math.max(
+                0,
+                Math.floor((getEffectiveServerNowMs() - startTime) / 1000),
+              ),
             );
           }
           setIsTimeExpired(true);
@@ -547,6 +833,11 @@ const App = () => {
           if (Number.isFinite(Number(timerResponse?.timerEndAtMs))) {
             timerEndAtMsForLaunch = Number(timerResponse.timerEndAtMs);
           }
+          syncServerClock(
+            timerResponse?.serverNowMs,
+            timerResponse?.clientRequestSentAtMs,
+            timerResponse?.clientResponseReceivedAtMs,
+          );
 
           if (timerResponse?.isTimeExpired) {
             setQuestError("This quest has already ended.");
@@ -573,17 +864,10 @@ const App = () => {
       setQuestions(questionList);
 
       try {
-        const distribution = await gameApi.getQuestLevelDistribution(questIdForTimer);
-        const counts = Array.isArray(distribution?.counts) ? distribution.counts : [];
-        const nextCounts = {};
-        counts.forEach((entry) => {
-          const level = Number(entry.level);
-          const players = Number(entry.players);
-          if (Number.isFinite(level) && level > 0) {
-            nextCounts[level] = Number.isFinite(players) && players > 0 ? players : 0;
-          }
-        });
-        setQuestLevelCounts(nextCounts);
+        await refreshQuestLevelDistribution(
+          questIdForTimer,
+          Number(firstQuestion?.level) || 1,
+        );
       } catch (distributionError) {
         console.error("Failed to fetch quest level distribution:", distributionError);
       }
@@ -599,7 +883,7 @@ const App = () => {
     setActiveRiddle(1);
     const remainingSeconds = Math.max(
       0,
-      Math.ceil((timerEndAtMsForLaunch - Date.now()) / 1000),
+      Math.ceil((timerEndAtMsForLaunch - getEffectiveServerNowMs()) / 1000),
     );
     setTimerEndAtMs(timerEndAtMsForLaunch);
     setTimeRemaining(remainingSeconds);
@@ -612,9 +896,11 @@ const App = () => {
     goScreen("screen-map");
     hasAutoSubmittedRef.current = false;
     markQuestPlayedInSession(userDetails.id, questToLaunch);
+    localStorage.setItem(ACTIVE_QUEST_SESSION_KEY, String(questToLaunch));
 
     if (socketRef.current) {
       socketRef.current.emit("join-quest-room", String(questToLaunch));
+      socketRef.current.emit("resume-quest-room", String(questToLaunch));
     }
   };
 
@@ -705,12 +991,18 @@ const App = () => {
       }
     } catch (error) {
       console.error("Answer validation failed:", error);
-      if (String(error?.message || "").toLowerCase().includes("blocked by invigilator")) {
+      const errorMessage = String(error?.message || "");
+      if (errorMessage.toLowerCase().includes("quest has already ended")) {
+        setTimeRemaining(0);
+        setIsTimeExpired(true);
+        await autoSubmitQuestAttempt("timeout");
+        goScreen("screen-winner");
+      } else if (errorMessage.toLowerCase().includes("blocked by invigilator")) {
         handleBlockedByInvigilator(
           "You have been blocked by the invigilator due to UMF (Unfair Means).",
         );
       } else {
-        setRiddleSubmitError(error?.message || "Unable to validate answer right now.");
+        setRiddleSubmitError(errorMessage || "Unable to validate answer right now.");
       }
     } finally {
       setIsSubmittingRiddle(false);
@@ -721,10 +1013,12 @@ const App = () => {
     if (startTime) {
       setFinalElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
     }
+    localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
     goScreen("screen-winner");
   };
 
   const resetGame = () => {
+    localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
     setCurrentScreen("screen-quest");
     setSolvedCount(0);
     setActiveRiddle(0);
@@ -767,6 +1061,7 @@ const App = () => {
         socketRef.current.emit("leave-quest-room", questRoomId);
       }
     }
+    localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
     resetGame();
   };
 
@@ -798,6 +1093,7 @@ const App = () => {
       }
     }
     localStorage.removeItem(PLAYER_SESSION_KEY);
+    localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
     setUserDetails({
       id: "",
       email: "",

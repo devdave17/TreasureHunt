@@ -12,6 +12,7 @@ import {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const DEFAULT_USERS_FILE = resolve(__dirname, "../../data/defaultUsers.json")
+const MINIMUM_REMAINING_TIME_MS = 30 * 1000
 
 const getQuestEndAtMs = (quest) =>
   getQuestStartAtMs(quest) + (Number(quest?.durationMinutes) || 60) * 60 * 1000
@@ -375,6 +376,8 @@ export const addQuest = async (req, res) => {
     const questCode = String(code || "").trim().toUpperCase()
     const parsedDurationMinutes = Number(durationMinutes)
     const parsedStartAtMs = getQuestStartAtMs({ startAtMs })
+    const parsedEndAtMs =
+      parsedStartAtMs + parsedDurationMinutes * 60 * 1000
 
     if (!questName) {
       return res.status(400).json({ error: "Quest name is required" })
@@ -382,6 +385,12 @@ export const addQuest = async (req, res) => {
 
     if (!Number.isInteger(parsedDurationMinutes) || parsedDurationMinutes < 1) {
       return res.status(400).json({ error: "Time duration must be a positive whole number" })
+    }
+
+    if (parsedEndAtMs - Date.now() < MINIMUM_REMAINING_TIME_MS) {
+      return res.status(400).json({
+        error: "Quest end time must be at least 30 seconds from now",
+      })
     }
 
     if (questCode) {
@@ -449,6 +458,8 @@ export const updateQuest = async (req, res) => {
     const questCode = String(code || "").trim().toUpperCase()
     const parsedDurationMinutes = Number(durationMinutes)
     const parsedStartAtMs = getQuestStartAtMs({ startAtMs })
+    const parsedEndAtMs =
+      parsedStartAtMs + parsedDurationMinutes * 60 * 1000
 
     if (!questName) {
       return res.status(400).json({ error: "Quest name is required" })
@@ -456,6 +467,12 @@ export const updateQuest = async (req, res) => {
 
     if (!Number.isInteger(parsedDurationMinutes) || parsedDurationMinutes < 1) {
       return res.status(400).json({ error: "Time duration must be a positive whole number" })
+    }
+
+    if (parsedEndAtMs - Date.now() < MINIMUM_REMAINING_TIME_MS) {
+      return res.status(400).json({
+        error: "Quest end time must be at least 30 seconds from now",
+      })
     }
 
     if (questCode) {
@@ -517,6 +534,7 @@ export const updateQuest = async (req, res) => {
         startAtMs: parsedStartAtMs,
         durationMinutes: parsedDurationMinutes,
         timerEndAtMs: parsedStartAtMs + parsedDurationMinutes * 60 * 1000,
+        serverNowMs: Date.now(),
         updatedAt: new Date()
       })
     }

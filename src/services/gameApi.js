@@ -44,6 +44,7 @@ export const gameApi = {
 
   // Start timer for a question
   async startQuestionTimer(userId, level, questId, token) {
+    const clientRequestSentAtMs = Date.now();
     console.log("[gameApi.startQuestionTimer] request", {
       userId,
       level,
@@ -66,7 +67,12 @@ export const gameApi = {
       questId,
     });
 
-    return parseJsonSafe(response);
+    const payload = await parseJsonSafe(response);
+    return {
+      ...payload,
+      clientRequestSentAtMs,
+      clientResponseReceivedAtMs: Date.now(),
+    };
   },
 
   // Update user level and score after completing a question
@@ -102,6 +108,7 @@ export const gameApi = {
 
   // Get user progress
   async getUserProgress(userId, questId, token) {
+    const clientRequestSentAtMs = Date.now();
     const query = questId ? `?questId=${encodeURIComponent(questId)}` : "";
     const response = await fetch(`${BASE_URL}/game/progress/${userId}${query}`, {
       headers: getAuthHeaders(token),
@@ -112,7 +119,12 @@ export const gameApi = {
       throw new Error(error.error || "Failed to get progress");
     }
 
-    return parseJsonSafe(response);
+    const payload = await parseJsonSafe(response);
+    return {
+      ...payload,
+      clientRequestSentAtMs,
+      clientResponseReceivedAtMs: Date.now(),
+    };
   },
 
   // Submit question answer for a specific quest/question

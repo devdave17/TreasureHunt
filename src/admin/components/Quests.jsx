@@ -71,6 +71,8 @@ function Quests({ authToken }) {
     const questCode = questForm.code.trim().toUpperCase()
     const parsedDurationMinutes = Number(questForm.durationMinutes)
     const parsedStartAtMs = Number(new Date(questForm.startAt).getTime())
+    const parsedEndAtMs =
+      parsedStartAtMs + parsedDurationMinutes * 60 * 1000
 
     if (!questName) {
       setError("Quest name is required")
@@ -84,6 +86,11 @@ function Quests({ authToken }) {
 
     if (Number.isNaN(parsedStartAtMs)) {
       setError("Go live time is required")
+      return
+    }
+
+    if (parsedEndAtMs - Date.now() < 30 * 1000) {
+      setError("Quest end time must be at least 30 seconds from now")
       return
     }
 

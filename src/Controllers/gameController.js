@@ -92,6 +92,16 @@ const getQuestProgressDocRef = (userId, questId) => {
 
 const getQuestRoomName = (questId) => `quest:${String(questId || "").trim()}`;
 
+const getQuestExpiryPayload = (questData, nowMs = Date.now()) => {
+  const contestEndAtMs = getQuestEndAtMs(questData);
+  return {
+    code: "QUEST_EXPIRED",
+    error: "This quest has already ended",
+    serverNowMs: nowMs,
+    contestEndAtMs,
+  };
+};
+
 const questDistributionTimers = new Map();
 const questRankingCache = new Map();
 const publicQuestsCache = {
@@ -230,7 +240,13 @@ const computeQuestLevelDistribution = async (questId) => {
 
   const activeProgressRows = progressSnapshot.docs
     .map((doc) => doc.data() || {})
-    .filter((progress) => !Boolean(progress.isSubmitted));
+    .filter((progress) => {
+      const status = String(progress.status || "").toLowerCase();
+      return (
+        !Boolean(progress.isSubmitted) &&
+        !["submitted", "completed", "timeout", "blocked", "abandoned"].includes(status)
+      );
+    });
 
   const countsMap = new Map();
   activeProgressRows.forEach((progress) => {
@@ -247,10 +263,13 @@ const computeQuestLevelDistribution = async (questId) => {
         .filter((level) => level > 0),
     );
 
-    // Count players on the level they are currently solving.
-    // If level N is submitted, player is now solving N+1.
     const completedCount = uniqueCompleted.size;
-    const activeLevel = Math.max(1, completedCount + 1);
+    const storedActiveLevel =
+      Number(progress.currentLevel) || Number(progress.currentQuestionLevel) || 0;
+    const activeLevel = Math.max(
+      1,
+      completedCount > 0 ? completedCount + 1 : storedActiveLevel || 1,
+    );
     const bucketLevel = totalQuestions > 0
       ? Math.min(activeLevel, totalQuestions)
       : activeLevel;
@@ -301,6 +320,54 @@ export const scheduleQuestDistributionBroadcast = (io, questId) => {
   }, 1200);
 
   questDistributionTimers.set(normalizedQuestId, timer);
+};
+
+export const setQuestProgressPresence = async (
+  io,
+  userId,
+  questId,
+  status,
+  presenceId = "",
+) => {
+  const normalizedUserId = String(userId || "").trim();
+  const normalizedQuestId = String(questId || "").trim();
+  if (!normalizedUserId || !normalizedQuestId) {
+    return;
+  }
+
+  const progressRef = getQuestProgressDocRef(
+    normalizedUserId,
+    normalizedQuestId,
+  );
+  const progressSnapshot = await progressRef.get();
+  if (!progressSnapshot.exists) {
+    return;
+  }
+
+  const progress = progressSnapshot.data() || {};
+  if (progress.isSubmitted || progress.status === "submitted") {
+    return;
+  }
+  if (
+    status === "abandoned" &&
+    presenceId &&
+    progress.presenceSocketId &&
+    progress.presenceSocketId !== presenceId
+  ) {
+    return;
+  }
+
+  await progressRef.set(
+    {
+      status,
+      presenceSocketId: status === "active" ? presenceId : null,
+      lastActive: new Date(),
+      updatedAt: new Date(),
+    },
+    { merge: true },
+  );
+  invalidateQuestRankingCache(normalizedQuestId);
+  scheduleQuestDistributionBroadcast(io, normalizedQuestId);
 };
 
 const ensurePlayerAllowed = async (userId) => {
@@ -773,7 +840,15 @@ export const updatePlayerProgress = async (req, res) => {
       .collection(dbConfig.COLLECTIONS.QUESTS)
       .doc(String(questId))
       .get();
+    if (!questDoc.exists) {
+      return res.status(404).json({ error: "Quest not found" });
+    }
     const questData = questDoc.exists ? questDoc.data() || {} : {};
+    const questEndAtMs = getQuestEndAtMs(questData);
+    const serverNowMs = Date.now();
+    if (serverNowMs >= questEndAtMs) {
+      return res.status(409).json(getQuestExpiryPayload(questData, serverNowMs));
+    }
 
     const questProgressRef = getQuestProgressDocRef(userId, questId);
     console.log("[updatePlayerProgress] questProgress doc", {
@@ -858,6 +933,13 @@ export const updatePlayerProgress = async (req, res) => {
       lastActive: currentCompletedAt,
       updatedAt: currentCompletedAt,
     };
+
+    const finalServerNowMs = Date.now();
+    if (finalServerNowMs >= questEndAtMs) {
+      return res
+        .status(409)
+        .json(getQuestExpiryPayload(questData, finalServerNowMs));
+    }
 
     await questProgressRef.set(updatedProgress, { merge: true });
     invalidateQuestRankingCache(questId);
@@ -950,6 +1032,7 @@ export const startQuestionTimer = async (req, res) => {
       timerEndAtMs,
       currentQuestionLevel: Number(level),
       currentLevel: Number(level),
+      status: "active",
       HackerRank_score: 0,
       totalScore: 0,
       score: 0,
@@ -980,6 +1063,7 @@ export const startQuestionTimer = async (req, res) => {
       timerEndAtMs,
       timeRemainingSeconds: Math.max(0, Math.ceil((timerEndAtMs - now.getTime()) / 1000)),
       isTimeExpired: now.getTime() >= timerEndAtMs,
+      serverNowMs: now.getTime(),
       questDurationMinutes,
       questProgress,
     });
@@ -1005,6 +1089,7 @@ export const getUserProgress = async (req, res) => {
       }
 
       return res.json({
+        serverNowMs: Date.now(),
         progress: {
           id: progressSnap.id,
           ...progressSnap.data(),
@@ -1022,7 +1107,7 @@ export const getUserProgress = async (req, res) => {
       ...doc.data(),
     }));
 
-    return res.json({ progresses });
+    return res.json({ progresses, serverNowMs: Date.now() });
   } catch (error) {
     console.error("Error fetching user progress:", error);
     return res.status(500).json({ error: "Failed to get progress" });
@@ -1145,6 +1230,22 @@ export const validateQuestAnswer = async (req, res) => {
       return res.status(eligibility.status).json(eligibility.payload);
     }
 
+    const questDoc = await db
+      .collection(dbConfig.COLLECTIONS.QUESTS)
+      .doc(String(questId))
+      .get();
+    if (!questDoc.exists) {
+      return res.status(404).json({ error: "Quest not found" });
+    }
+
+    const questData = questDoc.data() || {};
+    const initialServerNowMs = Date.now();
+    if (initialServerNowMs >= getQuestEndAtMs(questData)) {
+      return res
+        .status(409)
+        .json(getQuestExpiryPayload(questData, initialServerNowMs));
+    }
+
     const normalizedInput = normalizeAnswer(answer);
     if (!normalizedInput) {
       return res.status(400).json({ error: "Answer is required" });
@@ -1178,6 +1279,12 @@ export const validateQuestAnswer = async (req, res) => {
     const isCorrect = expectedAnswers.some((expected) =>
       answersMatch(normalizedInput, expected, validationMode),
     );
+    const finalServerNowMs = Date.now();
+    if (finalServerNowMs >= getQuestEndAtMs(questData)) {
+      return res
+        .status(409)
+        .json(getQuestExpiryPayload(questData, finalServerNowMs));
+    }
 
     console.log("[validateQuestAnswer] result", {
       questId,
@@ -1196,6 +1303,8 @@ export const validateQuestAnswer = async (req, res) => {
         level: Number(question.level) || null,
         title: question.title || "",
       },
+      serverNowMs: finalServerNowMs,
+      contestEndAtMs: getQuestEndAtMs(questData),
     });
   } catch (error) {
     console.error("Error validating quest answer:", error);
