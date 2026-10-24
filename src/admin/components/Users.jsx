@@ -22,16 +22,38 @@ function Users({ authToken, role }) {
   });
   const [sortColumn, setSortColumn] = useState("score");
   const [sortDirection, setSortDirection] = useState("desc");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+  });
 
   const canManageUsers = role === "admin";
   const canBlockUsers = role === "admin" || role === "invigilator";
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (requestedPage = page, requestedSearch = search) => {
     try {
       setLoading(true);
       setError("");
-      const data = await api.getUsers(authToken, role);
-      setUsers(Array.isArray(data) ? data : []);
+      const data = await api.getUsers(authToken, role, {
+        page: requestedPage,
+        limit: 50,
+        search: requestedSearch,
+      });
+      setUsers(Array.isArray(data?.users) ? data.users : []);
+      setPagination(
+        data?.pagination || {
+          page: requestedPage,
+          limit: 50,
+          total: data?.users?.length || 0,
+          totalPages: 1,
+        },
+      );
+      setPage(requestedPage);
     } catch (err) {
       setError(err.message || "Failed to load users");
     } finally {
@@ -39,11 +61,22 @@ function Users({ authToken, role }) {
     }
   };
 
+  const handleSearchChange = (event) => {
+    setSearchInput(event.target.value);
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const nextSearch = searchInput.trim();
+    setSearch(nextSearch);
+    void fetchUsers(1, nextSearch);
+  };
+
   useEffect(() => {
     if (authToken) {
-      fetchUsers();
+      void fetchUsers(1, search);
     }
-  // Refresh when the authenticated role changes.
+  // Load the first page when the authenticated admin session changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, role]);
 
@@ -101,14 +134,18 @@ function Users({ authToken, role }) {
     setSuccessMessage("");
 
     try {
-      await api.blockUser(userId, shouldBlock, authToken, role);
+      const result = await api.blockUser(userId, shouldBlock, authToken, role);
+      const nextBlockedState =
+        typeof result?.isBlocked === "boolean"
+          ? result.isBlocked
+          : shouldBlock;
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === userId ? { ...u, isBlocked: shouldBlock } : u,
+          u.id === userId ? { ...u, isBlocked: nextBlockedState } : u,
         ),
       );
       setSuccessMessage(
-        `User ${shouldBlock ? "blocked" : "unblocked"} successfully`,
+        `User ${nextBlockedState ? "blocked" : "unblocked"} successfully`,
       );
     } catch (err) {
       setError(err.message);
@@ -217,7 +254,7 @@ function Users({ authToken, role }) {
       await api.addUser({ email, name, level }, authToken, role);
       setSuccessMessage("User added successfully");
       setNewUserForm({ email: "", name: "", level: 1 });
-      await fetchUsers();
+      await fetchUsers(page, search);
     } catch (err) {
       setError(err.message || "Unable to add user");
     } finally {
@@ -250,7 +287,7 @@ function Users({ authToken, role }) {
         `Imported ${data.created ?? 0} users. Skipped ${data.skippedDuplicate ?? 0} duplicate and ${data.skippedInvalid ?? 0} invalid.`,
       );
       setJsonInput("");
-      await fetchUsers();
+      await fetchUsers(page, search);
     } catch (err) {
       setError(err.message || "Unable to import users");
     } finally {
@@ -446,6 +483,37 @@ function Users({ authToken, role }) {
         <div className="state-box success">{successMessage}</div>
       )}
 
+      <form className="users-toolbar" onSubmit={handleSearchSubmit}>
+        <label htmlFor="user-search">Search users</label>
+        <input
+          id="user-search"
+          type="search"
+          value={searchInput}
+          onChange={handleSearchChange}
+          placeholder="Search by name or email"
+        />
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          Search
+        </button>
+        {search && (
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => {
+              setSearchInput("");
+              setSearch("");
+              void fetchUsers(1, "");
+            }}
+            disabled={loading}
+          >
+            Clear
+          </button>
+        )}
+        <span>
+          {pagination.total} user{pagination.total === 1 ? "" : "s"} found
+        </span>
+      </form>
+
       {loading ? (
         <div className="state-box">Loading users...</div>
       ) : (
@@ -515,7 +583,9 @@ function Users({ authToken, role }) {
 
                   return (
                     <tr key={user.id}>
-                      <td className="text-center">{idx + 1}</td>
+                      <td className="text-center">
+                        {(pagination.page - 1) * pagination.limit + idx + 1}
+                      </td>
                       <td>{user.email || "-"}</td>
                       <td>{user.name || "-"}</td>
                       <td>{currentLevel}</td>
@@ -614,6 +684,27 @@ function Users({ authToken, role }) {
               )}
             </tbody>
           </table>
+          <div className="users-pagination">
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={loading || pagination.page <= 1}
+              onClick={() => fetchUsers(pagination.page - 1, search)}
+            >
+              Previous
+            </button>
+            <span>
+              Page {pagination.page} of {Math.max(1, pagination.totalPages)}
+            </span>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={loading || pagination.page >= pagination.totalPages}
+              onClick={() => fetchUsers(pagination.page + 1, search)}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

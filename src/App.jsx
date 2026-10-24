@@ -85,6 +85,7 @@ const mapQuestionToRiddle = (question, index, total) => {
     stage: `STAGE ${step} OF ${total}`,
     difficulty: safeDifficulty,
     riddle: question.riddleText || "Decode the challenge and unlock the path.",
+    inputKey: question.inputKey || "",
     problem:
       question.problemStatement || "Solve the coding problem to proceed.",
     prevNum: Math.max(0, step - 1),

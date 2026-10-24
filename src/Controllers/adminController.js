@@ -139,21 +139,85 @@ export const addUser = async (req, res) => {
 // ✅ GET USERS
 export const getUsers = async (req, res) => {
   try {
-    const snapshot = await db.collection(dbConfig.COLLECTIONS.USERS).get()
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1)
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.parseInt(req.query.limit, 10) || 50),
+    )
+    const search = String(req.query.search || "").trim()
+    const searchRegex = search
+      ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
+      : null
 
-    const users = snapshot.docs.map((doc) => {
-      const userData = doc.data() || {}
+    const mongoDb = await db.ensureReady()
+    const usersCollection = mongoDb.collection(dbConfig.COLLECTIONS.USERS)
+    const filter = searchRegex
+      ? { $or: [{ name: searchRegex }, { email: searchRegex }] }
+      : {}
+    const [documents, total] = await Promise.all([
+      usersCollection
+        .find(filter)
+        .sort({ createdAt: -1, _id: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .toArray(),
+      usersCollection.countDocuments(filter),
+    ])
 
-      return {
-        id: doc.id,
-        ...userData,
-      }
+    const users = documents.map(({ _id, ...userData }) => ({
+      id: String(_id),
+      ...userData,
+    }))
+
+    return res.json({
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
-
-    res.json(users)
   } catch (error) {
     console.error("Error fetching users:", error)
     res.status(500).json({ error: "Failed to fetch users" })
+  }
+}
+
+// ✅ GET USER COUNTS
+export const getUserStats = async (req, res) => {
+  try {
+    const mongoDb = await db.ensureReady()
+    const usersCollection = mongoDb.collection(dbConfig.COLLECTIONS.USERS)
+    const [totalUsers, blockedUsers, levelRows] = await Promise.all([
+      usersCollection.countDocuments({}),
+      usersCollection.countDocuments({ isBlocked: true }),
+      usersCollection
+        .aggregate([
+          {
+            $group: {
+              _id: { $ifNull: ["$currentLevel", 0] },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
+    ])
+
+    const levelDistribution = Object.fromEntries(
+      levelRows.map((row) => [String(Number(row._id) || 0), row.count]),
+    )
+
+    return res.json({
+      totalUsers,
+      activeUsers: totalUsers - blockedUsers,
+      blockedUsers,
+      levelDistribution,
+    })
+  } catch (error) {
+    console.error("Error fetching user stats:", error)
+    return res.status(500).json({ error: "Failed to fetch user stats" })
   }
 }
 
@@ -186,29 +250,6 @@ export const blockUser = async (req, res) => {
       updatedAt: new Date(),
     })
 
-    if (shouldBlock) {
-      const progressSnapshot = await db
-        .collection(dbConfig.COLLECTIONS.QUEST_PROGRESS)
-        .where("userId", "==", String(userId))
-        .get()
-
-      const affectedQuestIds = new Set()
-
-      for (const doc of progressSnapshot.docs) {
-        const progressData = doc.data() || {}
-        if (progressData.questId) {
-          affectedQuestIds.add(String(progressData.questId))
-        }
-        await doc.ref.delete()
-      }
-
-      affectedQuestIds.forEach((questId) => {
-        invalidateQuestContentCache(questId)
-        invalidateQuestRankingCache(questId)
-        scheduleQuestDistributionBroadcast(req.io, questId)
-      })
-    }
-
     if (req.io) {
       req.io.emit("player-blocked", {
         userId: String(userId),
@@ -219,6 +260,45 @@ export const blockUser = async (req, res) => {
           : "You have been unblocked by the invigilator.",
       })
     }
+
+    const response = res.status(200).json({
+      message: shouldBlock
+        ? "User blocked successfully"
+        : "User unblocked successfully",
+      userId: String(userId),
+      isBlocked: shouldBlock,
+    })
+
+    if (shouldBlock) {
+      void (async () => {
+        try {
+          const progressSnapshot = await db
+            .collection(dbConfig.COLLECTIONS.QUEST_PROGRESS)
+            .where("userId", "==", String(userId))
+            .get()
+
+          const affectedQuestIds = new Set()
+
+          for (const doc of progressSnapshot.docs) {
+            const progressData = doc.data() || {}
+            if (progressData.questId) {
+              affectedQuestIds.add(String(progressData.questId))
+            }
+            await doc.ref.delete()
+          }
+
+          affectedQuestIds.forEach((questId) => {
+            invalidateQuestContentCache(questId)
+            invalidateQuestRankingCache(questId)
+            scheduleQuestDistributionBroadcast(req.io, questId)
+          })
+        } catch (error) {
+          console.error("Error cleaning up blocked user progress:", error)
+        }
+      })()
+    }
+
+    return response
   } catch (error) {
     console.error("Error blocking user:", error)
     res.status(500).json({ error: "Failed to block user" })
@@ -621,6 +701,7 @@ export const addQuestion = async (req, res) => {
       level,
       title,
       riddleText = "",
+      inputKey = "",
       problemStatement = "",
       correctAnswer,
       acceptedAnswers = [],
@@ -646,6 +727,10 @@ export const addQuestion = async (req, res) => {
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ error: "Title is required" })
+    }
+
+    if (!inputKey || !String(inputKey).trim()) {
+      return res.status(400).json({ error: "Input key is required" })
     }
 
     if (!correctAnswer || !String(correctAnswer).trim()) {
@@ -677,6 +762,7 @@ export const addQuestion = async (req, res) => {
       level: parsedLevel,
       title: String(title).trim(),
       riddleText: String(riddleText || "").trim(),
+      inputKey: String(inputKey).trim(),
       problemStatement: String(problemStatement || "").trim(),
       correctAnswer: String(correctAnswer).trim(),
       acceptedAnswers: parsedAcceptedAnswers,
@@ -715,6 +801,7 @@ export const updateQuestion = async (req, res) => {
       level,
       title,
       riddleText = "",
+      inputKey = "",
       problemStatement = "",
       correctAnswer,
       acceptedAnswers = [],
@@ -743,6 +830,10 @@ export const updateQuestion = async (req, res) => {
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ error: "Title is required" })
+    }
+
+    if (!inputKey || !String(inputKey).trim()) {
+      return res.status(400).json({ error: "Input key is required" })
     }
 
     if (!correctAnswer || !String(correctAnswer).trim()) {
@@ -774,6 +865,7 @@ export const updateQuestion = async (req, res) => {
       level: parsedLevel,
       title: String(title).trim(),
       riddleText: String(riddleText || "").trim(),
+      inputKey: String(inputKey).trim(),
       problemStatement: String(problemStatement || "").trim(),
       correctAnswer: String(correctAnswer).trim(),
       acceptedAnswers: parsedAcceptedAnswers,

@@ -26,6 +26,7 @@ function Questions({ authToken }) {
     level: "",
     title: "",
     riddleText: "",
+    inputKey: "",
     problemStatement: "",
     correctAnswer: "",
     score: "10",
@@ -101,8 +102,8 @@ function Questions({ authToken }) {
       return
     }
 
-    if (!formData.level || !formData.title || !formData.correctAnswer || !formData.score) {
-      setError("Level, Title, Correct Answer, and Score are required")
+    if (!formData.level || !formData.title || !formData.inputKey || !formData.correctAnswer || !formData.score) {
+      setError("Level, Title, Input Key, Correct Answer, and Score are required")
       return
     }
 
@@ -141,6 +142,7 @@ function Questions({ authToken }) {
       level: question.level || "",
       title: question.title || "",
       riddleText: question.riddleText || "",
+      inputKey: question.inputKey || "",
       problemStatement: question.problemStatement || "",
       correctAnswer: question.correctAnswer || "",
       score: String(Number(question.score) || 10),
@@ -173,6 +175,7 @@ function Questions({ authToken }) {
       level: "",
       title: "",
       riddleText: "",
+      inputKey: "",
       problemStatement: "",
       correctAnswer: "",
       score: "10",
@@ -242,6 +245,19 @@ function Questions({ authToken }) {
             </div>
 
             <form onSubmit={handleSubmit} className="question-form">
+              <div className="form-group">
+                <label htmlFor="inputKey">Input Key *</label>
+                <textarea
+                  id="inputKey"
+                  name="inputKey"
+                  value={formData.inputKey}
+                  onChange={handleInputChange}
+                  placeholder="Input to use when running the code"
+                  rows="3"
+                  required
+                />
+              </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="level">Level *</label>
@@ -405,6 +421,11 @@ function Questions({ authToken }) {
                     <strong>Riddle:</strong> {question.riddleText}
                   </div>
                 )}
+
+                <div className="question-detail">
+                  <strong>Input Key:</strong>
+                  <pre className="question-input-key">{question.inputKey || "Missing input key"}</pre>
+                </div>
 
                 {question.problemStatement && (
                   <div className="question-detail">

@@ -5,6 +5,7 @@ import {
   bulkAddUsers,
   seedUsersFromFile,
   getUsers,
+  getUserStats,
   blockUser,
   updateLevel,
   deleteUser,
@@ -24,6 +25,7 @@ const router = express.Router();
 router.post("/users", requireRoles(["admin"]), addUser);
 router.post("/users/bulk", requireRoles(["admin"]), bulkAddUsers);
 router.post("/users/seed", requireRoles(["admin"]), seedUsersFromFile);
+router.get("/users/stats", requireRoles(["admin", "invigilator"]), getUserStats);
 router.get("/users", requireRoles(["admin", "invigilator"]), getUsers);
 router.post("/block", requireRoles(["admin", "invigilator"]), blockUser);
 router.post("/update-level", requireRoles(["admin"]), updateLevel);

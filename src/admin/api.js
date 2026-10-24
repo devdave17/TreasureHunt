@@ -25,14 +25,38 @@ const parseJsonSafe = async (response) => {
 
 export const api = {
   // Users endpoints
-  async getUsers(token, role = "admin") {
-    const response = await fetch(`${BASE_URL}/admin/users`, {
+  async getUsers(token, role = "admin", options) {
+    const { page = 1, limit = 50, search = "" } = options || {};
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (search.trim()) {
+      params.set("search", search.trim());
+    }
+    const response = await fetch(`${BASE_URL}/admin/users?${params.toString()}`, {
       headers: getReadHeaders(token, role),
     });
     if (response.status === 401) throw new Error("Session expired");
     if (!response.ok) {
       const error = await parseJsonSafe(response);
       throw new Error(error.error || `Failed to fetch users (status ${response.status})`);
+    }
+    const data = await parseJsonSafe(response);
+    if (options) {
+      return Array.isArray(data) ? { users: data, pagination: null } : data;
+    }
+    return Array.isArray(data) ? data : data.users || [];
+  },
+
+  async getUserStats(token, role = "admin") {
+    const response = await fetch(`${BASE_URL}/admin/users/stats`, {
+      headers: getReadHeaders(token, role),
+    });
+    if (response.status === 401) throw new Error("Session expired");
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || "Failed to fetch user stats");
     }
     return parseJsonSafe(response);
   },
@@ -58,8 +82,11 @@ export const api = {
       body: JSON.stringify({ userId, isBlocked }),
     });
     if (response.status === 401) throw new Error("Session expired");
-    if (!response.ok) throw new Error("Failed to update user status");
-    return response.json();
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || "Failed to update user status");
+    }
+    return response.status === 204 ? null : parseJsonSafe(response);
   },
 
   async updateUserLevel(userId, level, points, token, role = "admin") {

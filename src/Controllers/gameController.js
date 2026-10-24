@@ -625,6 +625,7 @@ export const getPublicQuestQuestions = async (req, res) => {
       questId: question.questId,
       title: question.title || `Question ${index + 1}`,
       riddleText: question.riddleText || "",
+      inputKey: question.inputKey || "",
       problemStatement: question.problemStatement || "",
       difficulty: question.difficulty || "Medium",
       score: Number(question.score) || 10,

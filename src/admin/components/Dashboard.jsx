@@ -1,9 +1,14 @@
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 import PropTypes from "prop-types"
 import { api } from "../api.js"
 
 function Dashboard({ authToken, role }) {
-  const [users, setUsers] = useState([])
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    blockedUsers: 0,
+    levelDistribution: {},
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -12,8 +17,8 @@ function Dashboard({ authToken, role }) {
       try {
         setLoading(true)
         setError("")
-        const userData = await api.getUsers(authToken, role)
-        setUsers(Array.isArray(userData) ? userData : [])
+        const userStats = await api.getUserStats(authToken, role)
+        setStats(userStats)
       } catch (err) {
         setError(err.message)
       } finally {
@@ -25,24 +30,6 @@ function Dashboard({ authToken, role }) {
       fetchData()
     }
   }, [authToken, role])
-
-  const stats = useMemo(() => {
-    const activeUsers = users.filter((u) => !u.isBlocked).length
-    const blockedUsers = users.filter((u) => u.isBlocked).length
-    const levelDistribution = {}
-
-    users.forEach((user) => {
-      const level = Number(user.currentLevel) || 0
-      levelDistribution[level] = (levelDistribution[level] || 0) + 1
-    })
-
-    return {
-      totalUsers: users.length,
-      activeUsers,
-      blockedUsers,
-      levelDistribution
-    }
-  }, [users])
 
   return (
     <div className="dashboard-container">
