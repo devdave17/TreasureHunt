@@ -36,6 +36,8 @@ function Questions({ authToken }) {
     if (authToken) {
       initializeData()
     }
+  // Load once per authenticated admin session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken])
 
   useEffect(() => {
@@ -44,6 +46,8 @@ function Questions({ authToken }) {
     } else {
       setQuestions([])
     }
+  // Fetch whenever the selected quest changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, selectedQuestId])
 
   useEffect(() => {

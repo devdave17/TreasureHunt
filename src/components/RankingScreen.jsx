@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { gameApi } from "../services/gameApi";
+import HauntDialog from "./HauntDialog";
+import "./RankingScreen.css";
+import "./HauntMotion.css";
 
 const formatTimestamp = (value) => {
   if (!value) {
@@ -57,21 +60,24 @@ function RankingScreen({ questId, onBack }) {
   useEffect(() => {
     let isMounted = true;
 
+    let inFlight = false;
     const loadRanking = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        setLoading(true);
-        setError("");
         const data = await gameApi.getQuestRanking(questId);
         if (!isMounted) {
           return;
         }
         setPayload(data);
+        setError("");
       } catch (rankingError) {
         if (!isMounted) {
           return;
         }
         setError(rankingError?.message || "Failed to load ranking.");
       } finally {
+        inFlight = false;
         if (isMounted) {
           setLoading(false);
         }
@@ -85,8 +91,10 @@ function RankingScreen({ questId, onBack }) {
       setError("Missing quest id in ranking link.");
     }
 
+    const interval = questId ? setInterval(loadRanking, 10_000) : null;
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
   }, [questId]);
 
@@ -114,12 +122,25 @@ function RankingScreen({ questId, onBack }) {
   const quest = payload?.quest || null;
   const summary = payload?.summary || { participantCount: 0, completedCount: 0 };
 
+  const backToHunt = async (event) => {
+    const page = event.currentTarget.closest("#screen-ranking");
+    if (!page?.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      onBack();
+      return;
+    }
+    page.inert = true;
+    const animation = page.animate([{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 180, easing: "ease-in", fill: "forwards" });
+    try { await animation.finished; onBack(); }
+    finally { animation.cancel(); page.inert = false; }
+  };
+
   return (
     <section className="screen ranking-screen active" id="screen-ranking">
-      <div className="ranking-shell panel">
+      <div className="ranking-shell">
+        <header className="ranking-page-header"><span>TREASURE OF CODE <b> / THE HONOR ROLL</b></span><button className="ranking-back btn-secondary" type="button" onClick={backToHunt}>← Back to the hunt</button></header>
         <div className="ranking-hero">
-          <div className="ranking-kicker">Quest Leaderboard</div>
-          <h1 className="ranking-title">{quest?.name || "Quest Ranking"}</h1>
+          <div className="ranking-kicker">LEGENDS OF THE HUNT / PUBLIC LEADERBOARD</div>
+          <h1 className="ranking-title" tabIndex={-1}>{quest?.name || "Quest Ranking"}</h1>
           <p className="ranking-subtitle">
             {quest?.description || "Quest-wide results are shown here for direct sharing."}
           </p>
@@ -136,16 +157,12 @@ function RankingScreen({ questId, onBack }) {
         </div>
 
         <div className="ranking-body">
-          <div className="ranking-toolbar">
-            <button className="btn btn-secondary ranking-back" type="button" onClick={onBack}>
-              Back
-            </button>
-          </div>
+          <div className="ranking-toolbar"><h2>The code hunters</h2><span>Updates every 10 seconds · Select a player for details</span></div>
 
           {loading ? (
-            <div className="ranking-state">Loading ranking...</div>
+            <div className="ranking-state" role="status">Opening the honor roll…</div>
           ) : error ? (
-            <div className="ranking-state ranking-state-error">{error}</div>
+            <div className="ranking-state ranking-state-error" role="alert">{error} Retrying shortly.</div>
           ) : rankingRows.length === 0 ? (
             <div className="ranking-state">No progress has been recorded for this quest yet.</div>
           ) : (
@@ -153,7 +170,7 @@ function RankingScreen({ questId, onBack }) {
               {rankingRows.map((row) => (
                 <article
                   key={row.userId}
-                  className={`ranking-card ranking-card-clickable rank-${Math.min(row.rank, 3)}`}
+                  className={`ranking-card ranking-card-clickable rank-${row.rank <= 3 ? row.rank : "other"}`}
                   role="button"
                   tabIndex={0}
                   aria-label={`Open details for ${row.name}`}
@@ -209,10 +226,10 @@ function RankingScreen({ questId, onBack }) {
         </div>
 
         {selectedParticipant && (
-          <div className="ranking-modal-backdrop" onClick={() => setSelectedParticipant(null)}>
+          <HauntDialog className="ranking-dialog" labelId="ranking-detail-title" onClose={() => setSelectedParticipant(null)}>
             <div className="ranking-modal" onClick={(event) => event.stopPropagation()}>
               <div className="ranking-modal-header">
-                <h3>Participant Details</h3>
+                <h3 id="ranking-detail-title">Participant Details</h3>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -302,7 +319,7 @@ function RankingScreen({ questId, onBack }) {
                 )}
               </div>
             </div>
-          </div>
+          </HauntDialog>
         )}
       </div>
     </section>

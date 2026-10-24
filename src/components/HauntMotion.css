@@ -1,0 +1,61 @@
+/* Shared motion for completed player pages; selectors opt in explicitly. */
+@keyframes haunt-page-in {
+  from { opacity: 0; transform: translateX(var(--haunt-entry-x, 18px)); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes haunt-content-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes haunt-art-in {
+  from { opacity: .35; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #screen-landing.active, #screen-start.active, #screen-quest.active {
+    animation: haunt-page-in 380ms cubic-bezier(.2, .7, .2, 1) backwards;
+  }
+  #screen-landing { --haunt-entry-x: -18px; }
+  #screen-start { --haunt-entry-x: 18px; }
+  #screen-quest { --haunt-entry-x: 18px; }
+
+  #screen-landing.active :is(.haunt-header, .haunt-eyebrow, .haunt-title, .haunt-tagline, .haunt-description, .haunt-enter, .haunt-login-note, .haunt-event, .haunt-guide),
+  #screen-start.active :is(.haunt-auth-header, .haunt-auth-story-copy, .haunt-auth-form-intro, .haunt-auth-form, .haunt-auth-help),
+  #screen-quest.active :is(.haunt-lobby-header, .haunt-lobby-banner-copy, .haunt-lobby-section-heading, .haunt-quest-card, .haunt-lobby-tip) {
+    animation: haunt-content-in 540ms cubic-bezier(.2, .7, .2, 1) backwards;
+  }
+
+  #screen-landing.active :is(.haunt-backdrop),
+  #screen-start.active .haunt-auth-story img {
+    animation: haunt-art-in 850ms ease-out backwards;
+  }
+
+  #screen-landing.active .haunt-eyebrow { animation-delay: 60ms; }
+  #screen-landing.active .haunt-title { animation-delay: 110ms; }
+  #screen-landing.active .haunt-tagline { animation-delay: 180ms; }
+  #screen-landing.active .haunt-description { animation-delay: 220ms; }
+  #screen-landing.active .haunt-enter { animation-delay: 260ms; }
+  #screen-landing.active :is(.haunt-login-note, .haunt-event) { animation-delay: 300ms; }
+  #screen-landing.active .haunt-guide { animation-delay: 340ms; }
+  #screen-start.active .haunt-auth-form-intro { animation-delay: 90ms; }
+  #screen-start.active .haunt-auth-story-copy { animation-delay: 140ms; }
+  #screen-start.active .haunt-auth-form { animation-delay: 180ms; }
+  #screen-start.active .haunt-auth-help { animation-delay: 260ms; }
+  #screen-quest.active .haunt-lobby-banner-copy { animation-delay: 80ms; }
+  #screen-quest.active .haunt-lobby-section-heading { animation-delay: 140ms; }
+  #screen-quest.active .haunt-quest-card { animation-delay: var(--quest-delay, 180ms); }
+  #screen-quest.active .haunt-lobby-tip { animation-delay: 350ms; }
+}
+
+/* Programmatic heading focus provides orientation without opening mobile keyboards. */
+#screen-landing .haunt-title:focus, #screen-start #player-login-title:focus, #screen-quest #quest-lobby-title:focus { outline: none; }
+
+@media (prefers-reduced-motion:no-preference) {
+  :is(#screen-map, #screen-riddle, #screen-winner, #screen-ranking).active { animation:haunt-page-in 380ms cubic-bezier(.2,.7,.2,1) backwards; }
+  :is(#screen-map, #screen-riddle, #screen-winner).active .hg-reveal { animation:haunt-content-in 550ms cubic-bezier(.2,.7,.2,1) var(--hg-delay,100ms) backwards; }
+  #screen-riddle.active .hg-challenge-work, #screen-winner.active .hg-result-copy { animation-delay:180ms; }
+  #screen-ranking.active :is(.ranking-hero,.ranking-card,.ranking-state) { animation:haunt-content-in 550ms cubic-bezier(.2,.7,.2,1) 100ms backwards; }
+}

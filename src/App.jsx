@@ -576,12 +576,16 @@ const App = () => {
         socketRef.current = null;
       }
     };
+  // Socket handlers intentionally capture the quest session at subscription time.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userDetails.id, activeQuestId, selectedQuestId]);
 
   useEffect(() => {
     if (userDetails.id && quests.length > 0 && !activeQuestId) {
       void recoverActiveQuest();
     }
+  // Recovery is triggered only when the authenticated quest list becomes available.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userDetails.id, quests, activeQuestId]);
 
   useEffect(() => {
@@ -646,6 +650,8 @@ const App = () => {
       window.removeEventListener("focus", syncTimerFromClock);
       window.removeEventListener("pageshow", syncTimerFromClock);
     };
+  // Timer visibility handlers intentionally use the active timer snapshot.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     timerEndAtMs,
     isBlockedByInvigilator,
@@ -680,6 +686,8 @@ const App = () => {
 
       return () => clearInterval(timer);
     }
+  // The interval is recreated when the timer state changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerEndAtMs, isTimeExpired, isBlockedByInvigilator, startTime]);
 
   const goScreen = (screenId) => {
@@ -1197,6 +1205,7 @@ const App = () => {
         <>
           <Timer timeRemaining={timeRemaining} isTimeExpired={isTimeExpired} />
           <RiddleScreen
+            key={currentRiddle?.id || "riddle"}
             riddle={currentRiddle}
             isSolved={isSolvedRiddle}
             onSubmit={submitRiddleKey}

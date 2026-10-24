@@ -1,0 +1,153 @@
+/* Player quest lobby only. */
+#root:has(> #screen-quest.active) { width: 100%; border: 0; }
+#screen-quest { padding: 0; gap: 0; justify-content: flex-start; text-align: left; background: #090c14; }
+.haunt-lobby { width: 100%; min-height: 100svh; background: #090c14; color: #f3e9db; font-family: Arial, Helvetica, sans-serif; }
+.haunt-lobby-header, .haunt-lobby-main, .haunt-lobby-footer { width: min(1280px, calc(100% - 112px)); margin-inline: auto; }
+.haunt-lobby-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 98px; border-bottom: 1px solid #f3e9db20; position: relative; z-index: 5; }
+.haunt-lobby-wordmark { font-family: "Cinzel", Georgia, serif; font-size: 20px; font-weight: 600; }
+.haunt-lobby-wordmark em { font-family: Georgia, serif; font-size: 17px; color: #ff9954; font-weight: 400; }
+.haunt-lobby-account { display: flex; align-items: center; gap: 23px; position: relative; }
+.haunt-lobby-profile-button { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: #e6d9cf; font: 11px Arial, sans-serif; padding: 7px 0; cursor: pointer; }
+.haunt-lobby-avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #362321; border: 1px solid #855838; color: #ffba85; font-family: Georgia, serif; font-size: 16px; }
+.haunt-lobby-profile-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.haunt-lobby-logout { background: none; border: 0; border-left: 1px solid #f3e9db25; color: #bdb4c4; padding: 9px 0 9px 22px; font: 11px Arial, sans-serif; cursor: pointer; }
+.haunt-lobby-logout span { color: #ff9954; margin-left: 8px; }
+.haunt-lobby-logout:hover { color: #ffb57d; }
+.haunt-lobby-profile { position: absolute; right: 0; top: calc(100% + 10px); width: 300px; max-width: calc(100vw - 40px); padding: 22px; border: 1px solid #664835; border-radius: 5px; background: #161722; box-shadow: 0 18px 45px #0008; }
+.haunt-lobby-profile strong { display: block; margin-top: 13px; color: #f3e9db; font-size: 16px; overflow-wrap: anywhere; }
+.haunt-lobby-profile > p:not(.haunt-lobby-kicker) { font-size: 12px; color: #c8c0cf; margin-block: 8px 18px; overflow-wrap: anywhere; line-height: 1.6; }
+.haunt-lobby-profile > span { display: block; border-top: 1px solid #ffffff17; padding-top: 14px; font-size: 10px; color: #b0a7b9; }
+.haunt-lobby-banner { position: relative; isolation: isolate; border: 1px solid #f3e9db20; border-radius: 5px; min-height: 294px; margin-top: 32px; padding: 35px 40px; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.haunt-lobby-banner > img { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
+.haunt-lobby-banner::before { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, #0b0e19ed, #0b0e1960 55%, #0b0e191a), linear-gradient(0deg, #0b0e1980, transparent 60%); }
+.haunt-lobby-kicker { color: #eca97b; font-size: 8px; letter-spacing: 2px; line-height: 1.7; }
+.haunt-lobby .haunt-lobby-banner h1 { font-family: "Cinzel", Georgia, serif; color: #f3e9db; font-size: clamp(30px, 3.7vw, 49px); line-height: 1.14; font-weight: 500; letter-spacing: -1px; margin: 15px 0; }
+.haunt-lobby-banner h1 span { color: #ffac71; }
+.haunt-lobby-banner-copy > p:last-child { color: #c7bfce; font-size: 12px; line-height: 1.8; }
+.haunt-lobby-banner-note { align-self: flex-end; text-align: right; }
+.haunt-lobby-banner-note > span { font-size: 7px; letter-spacing: 2px; color: #efb88d; }
+.haunt-lobby-banner-note p { margin-top: 9px; font-family: Georgia, serif; font-style: italic; font-size: 17px; color: #ece0d5; text-shadow: 0 2px 6px #000; }
+.haunt-lobby-quests { padding-block: 36px 24px; }
+.haunt-lobby-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 15px; margin-bottom: 24px; }
+.haunt-lobby .haunt-lobby-section-heading h2 { font-family: "Cinzel", Georgia, serif; font-weight: 400; font-size: 26px; line-height: 1.3; color: #f3e9db; margin: 8px 0 0; letter-spacing: -.4px; }
+.haunt-lobby-summary { display: flex; align-items: center; gap: 12px; color: #b7aebe; font-size: 10px; padding-bottom: 5px; }
+.haunt-lobby-summary i { width: 3px; height: 3px; border-radius: 50%; background: #9d7459; }
+.haunt-lobby-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.haunt-quest-card { display: flex; flex-direction: column; min-width: 0; background: #11141f; border: 1px solid #34303a; border-radius: 5px; overflow: hidden; transition: border-color .2s, box-shadow .2s; }
+.haunt-quest-card:hover { border-color: #a46e49; box-shadow: 0 8px 30px #0004; }
+.haunt-quest-card.is-selected { border-color: #e28c50; box-shadow: 0 0 0 1px #e28c501a; }
+.haunt-quest-art { position: relative; height: 187px; overflow: hidden; background: #12101c; }
+.haunt-quest-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, #11141f 0%, transparent 62%); pointer-events: none; }
+.haunt-quest-art img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .65s cubic-bezier(.2,.7,.2,1); }
+.haunt-quest-card:first-child .haunt-quest-art img { object-position: 76% center; }
+.haunt-quest-card:hover .haunt-quest-art img { transform: scale(1.045); }
+.haunt-quest-status { position: absolute; top: 14px; left: 14px; display: inline-flex; align-items: center; gap: 6px; z-index: 1; background: #0b0e19db; border: 1px solid #b8b2c03b; border-radius: 20px; padding: 7px 9px; font-size: 8px; color: #d3c9d8; }
+.haunt-quest-status i { height: 5px; width: 5px; border-radius: 50%; background: currentColor; }
+.haunt-quest-status.status-live, .haunt-quest-status.status-available { color: #bbe3bd; }
+.haunt-quest-status.status-upcoming { color: #ffbd87; }
+.haunt-quest-number { position: absolute; bottom: 14px; left: 22px; z-index: 1; color: #d4bac0; font-size: 8px; letter-spacing: 2px; }
+.haunt-quest-selected { position: absolute; bottom: 12px; right: 20px; z-index: 1; font-size: 9px; color: #ffb47f; }
+.haunt-quest-body { padding: 7px 22px 23px; display: flex; flex-direction: column; flex: 1; }
+.haunt-quest-code { color: #ba8a6a; font-size: 8px; letter-spacing: 1.5px; margin-bottom: 9px; overflow-wrap: anywhere; }
+.haunt-quest-body h3 { font-family: "Cinzel", Georgia, serif; font-size: 21px; font-weight: 500; line-height: 1.3; color: #f1e6d7; margin: 0 0 13px; overflow-wrap: anywhere; }
+.haunt-quest-description { font-size: 12px; line-height: 1.8; color: #b5adbf; margin-bottom: 20px; overflow-wrap: anywhere; }
+.haunt-quest-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-top: 1px solid #ffffff14; padding-top: 16px; margin-top: auto; margin-bottom: 22px; }
+.haunt-quest-meta dt { color: #938a9f; font-size: 9px; margin-bottom: 6px; }
+.haunt-quest-meta dd { color: #d5c9ce; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; margin: 0; }
+.haunt-quest-actions { display: flex; gap: 10px; }
+.haunt-lobby-primary, .haunt-lobby-secondary { min-height: 43px; padding: 11px 14px; border-radius: 3px; font: 600 11px Arial, sans-serif; cursor: pointer; transition: background .2s, border-color .2s; }
+.haunt-lobby-primary { flex: 1; display: inline-flex; justify-content: space-between; align-items: center; gap: 12px; background: #f68d45; border: 1px solid #ffb77c; color: #1e100a; }
+.haunt-lobby-primary span { font-size: 19px; line-height: 1; }
+.haunt-lobby-primary:hover:not(:disabled) { background: #ffb071; }
+.haunt-lobby-secondary { color: #cac0d0; border: 1px solid #49404f; background: transparent; }
+.haunt-lobby-secondary:hover:not(:disabled) { border-color: #df945f; color: #ffba86; }
+.haunt-lobby-secondary[aria-pressed="true"] { color: #ffb47f; background: #ff995410; border-color: #a96c42; }
+.haunt-lobby-primary.schedule-action { background: #211e2c; color: #dfc3ad; border-color: #584538; }
+.haunt-lobby-primary.schedule-action:hover { background: #342738; }
+.haunt-lobby button:disabled { opacity: .6; cursor: wait; }
+.haunt-lobby button:focus-visible, .haunt-lobby-replay button:focus-visible { outline: 2px solid #ff9954; outline-offset: 4px; }
+.haunt-lobby-tip { display: flex; gap: 14px; align-items: center; border: 1px solid #ffffff15; background: #10121d; border-radius: 4px; padding: 18px 22px; margin: 3px 0 33px; }
+.haunt-lobby-tip > span { font-size: 22px; color: #e89560; }
+.haunt-lobby-tip p { font-size: 11px; line-height: 1.8; color: #a9a0b4; }
+.haunt-lobby-tip strong { color: #dbcfce; font-weight: 500; margin-right: 5px; }
+.haunt-lobby-footer { display: flex; justify-content: space-between; gap: 16px; border-top: 1px solid #f3e9db20; padding-block: 24px; color: #9d93a9; font-size: 9px; }
+.haunt-lobby-footer > span:not(:first-child) { font-size: 7px; letter-spacing: 1.5px; }
+.haunt-lobby-error { color: #ffc2b8; border: 1px solid #8b4946; background: #321e25; padding: 15px 18px; border-radius: 4px; margin-bottom: 20px; font-size: 12px; line-height: 1.7; }
+.haunt-lobby-empty { text-align: center; border: 1px dashed #49404f; border-radius: 5px; background: #11141f; padding: 55px 24px; }
+.haunt-lobby-empty h3 { font-family: Georgia, serif; font-size: 24px; font-weight: 400; margin-block: 17px 12px; color: #e5d8d0; }
+.haunt-lobby-empty p { color: #b3a8be; font-size: 12px; line-height: 1.8; }
+.haunt-lobby-empty-mark { color: #f8aa76; font-size: 30px; }
+.haunt-lobby-loader { display: inline-block; width: 24px; height: 24px; border: 2px solid #473248; border-top-color: #ff9954; border-radius: 50%; animation: lobby-spin .8s linear infinite; }
+.haunt-lobby-dialog { margin: auto; padding: 0; width: min(460px, calc(100% - 32px)); max-height: calc(100svh - 40px); overflow-y: auto; color: #f3e9db; background: #151522; border: 1px solid #986044; border-radius: 7px; box-shadow: 0 25px 80px #0009; font-family: Arial, sans-serif; }
+.haunt-lobby-dialog::backdrop { background: #050710cc; backdrop-filter: blur(5px); }
+.haunt-lobby-dialog-inner { padding: 32px; }
+.haunt-lobby .haunt-lobby-dialog h2 { font-family: "Cinzel", Georgia, serif; font-size: 26px; font-weight: 500; line-height: 1.3; color: #f3e9db; margin: 15px 0; overflow-wrap: anywhere; }
+.haunt-lobby-dialog-copy { color: #bdb2c7; font-size: 12px; line-height: 1.8; }
+.haunt-lobby-dialog dl { margin-block: 20px 26px; }
+.haunt-lobby-dialog dl > div { display: flex; justify-content: space-between; gap: 18px; padding: 12px 0; border-bottom: 1px solid #ffffff17; font-size: 11px; line-height: 1.6; }
+.haunt-lobby-dialog dt { color: #a79bb3; flex-shrink: 0; }
+.haunt-lobby-dialog dd { color: #e8d8d1; text-align: right; margin: 0; }
+.haunt-lobby-dialog .haunt-lobby-primary { width: 100%; }
+.haunt-lobby-countdown { background: #ff99540c; border: 1px solid #ff995433; border-radius: 4px; padding: 18px; margin-top: 22px; text-align: center; }
+.haunt-lobby-countdown span { display: block; font-size: 8px; letter-spacing: 2px; color: #b9a3b8; }
+.haunt-lobby-countdown strong { display: block; font: 25px monospace; margin-top: 10px; color: #ffb37a; }
+.haunt-lobby-replay .profile-modal { background: #151522; border-color: #986044; color: #f3e9db; }
+.haunt-lobby-replay .exit-confirm-heading { color: #ffb37a; }
+.haunt-lobby-replay .exit-confirm-message { color: #c9becf; }
+.haunt-lobby-replay .btn-primary { background: #f68d45; color: #1e100a; animation: none; }
+.haunt-lobby-replay .btn-secondary { color: #d9c5d3; border-color: #665061; }
+@keyframes lobby-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: no-preference) {
+  .haunt-lobby-profile, .haunt-lobby-dialog[open] { animation: haunt-content-in 220ms ease-out backwards; }
+}
+@media (max-width: 1050px) {
+  .haunt-lobby-header, .haunt-lobby-main, .haunt-lobby-footer { width: calc(100% - 64px); }
+  .haunt-lobby-grid { gap: 15px; }
+  .haunt-quest-body { padding-inline: 17px; }
+  .haunt-quest-body h3 { font-size: 18px; }
+  .haunt-quest-actions { flex-direction: column; gap: 8px; }
+  .haunt-quest-actions button { width: 100%; }
+}
+@media (max-width: 760px) {
+  .haunt-lobby-header, .haunt-lobby-main, .haunt-lobby-footer { width: calc(100% - 40px); }
+  .haunt-lobby-header { min-height: 80px; gap: 12px; }
+  .haunt-lobby-wordmark { font-size: 15px; }
+  .haunt-lobby-wordmark em { font-size: 13px; }
+  .haunt-lobby-profile-name { display: none; }
+  .haunt-lobby-account { gap: 13px; }
+  .haunt-lobby-logout { padding-left: 13px; font-size: 10px; }
+  .haunt-lobby-logout span { display: none; }
+  .haunt-lobby-banner { padding: 28px; min-height: 275px; margin-top: 24px; }
+  .haunt-lobby-banner-note { display: none; }
+  .haunt-lobby-banner img { object-position: 70% center; }
+  .haunt-lobby-banner::before { background: linear-gradient(90deg, #0b0e19e6, #0b0e1955); }
+  .haunt-lobby-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .haunt-lobby-summary { font-size: 9px; gap: 7px; }
+  .haunt-lobby-section-heading { align-items: center; }
+  .haunt-lobby .haunt-lobby-section-heading h2 { font-size: 22px; }
+  .haunt-lobby-footer > span:nth-child(2) { display: none; }
+}
+@media (max-width: 520px) {
+  .haunt-lobby-grid { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .haunt-lobby-banner { padding: 24px; }
+  .haunt-lobby .haunt-lobby-banner h1 { font-size: clamp(27px, 7.5vw, 36px); }
+  .haunt-lobby-banner-copy > p:last-child { font-size: 11px; }
+  .haunt-lobby-kicker { font-size: 7px; letter-spacing: 1.5px; }
+  .haunt-lobby-section-heading { align-items: flex-start; flex-direction: column; gap: 13px; }
+  .haunt-quest-art { height: 190px; }
+  .haunt-quest-body { padding: 7px 22px 22px; }
+  .haunt-quest-body h3 { font-size: 23px; }
+  .haunt-quest-actions { flex-direction: row; }
+  .haunt-quest-actions .haunt-lobby-secondary { width: auto; }
+  .haunt-quest-actions .haunt-lobby-primary { width: auto; }
+  .haunt-lobby-tip { align-items: flex-start; padding: 16px; }
+  .haunt-lobby-dialog-inner { padding: 25px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .haunt-lobby-loader { animation: none; }
+  .haunt-quest-card, .haunt-quest-art img, .haunt-lobby-primary, .haunt-lobby-secondary { transition: none; }
+  .haunt-quest-card:hover .haunt-quest-art img { transform: none; }
+}
+.haunt-quest-ranking {display:flex;align-items:center;justify-content:space-between;margin-top:17px;color:#c6b1cc;font:10px/1.7 Arial,sans-serif;text-decoration:none;}
+.haunt-quest-ranking:hover {color:#ffb47c;}
+.haunt-quest-ranking:focus-visible {outline:2px solid #ffb47c;outline-offset:4px;}

@@ -41,7 +41,7 @@ export const adminAuth = (req, res, next) => {
     req.adminRole = role
     req.adminTokenPayload = payload
     next()
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: "Unauthorized admin request" })
   }
 }

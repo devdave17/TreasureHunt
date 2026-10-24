@@ -1,0 +1,58 @@
+#root:has(> #screen-ranking.active) {width:100%;border:0;}
+#screen-ranking {background:#090c14;color:#f3e9db;padding:0;gap:0;justify-content:flex-start;font-family:Arial,Helvetica,sans-serif;}
+#screen-ranking .ranking-shell {width:min(1280px,calc(100% - 96px));max-width:none;overflow:visible;position:relative;margin:0 auto;padding:0 0 45px;border:0;background:none;box-shadow:none;}
+#screen-ranking .ranking-shell::before {display:none;}
+#screen-ranking .ranking-page-header {display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:90px;font-size:10px;letter-spacing:1.3px;border-bottom:1px solid #eee0d322;}
+#screen-ranking .ranking-page-header b {font-weight:400;color:#a39bb0;}
+#screen-ranking .ranking-hero {margin:30px 0;padding:45px;min-height:320px;justify-content:center;border:1px solid #e6c19c33;border-radius:6px;background:linear-gradient(90deg,#0c101bf5 10%,#0c101bba 55%,#0c101b44),url('/halloween/treasure-vault.png') right 48%/cover;gap:17px;}
+#screen-ranking .ranking-kicker {font:600 9px/1.6 Arial,sans-serif;letter-spacing:2px;color:#f0a476;}
+#screen-ranking .ranking-title {font:500 clamp(30px,4vw,54px)/1.2 'Cinzel',Georgia,serif;color:#f3e9db;-webkit-text-fill-color:#f3e9db;background:none;letter-spacing:-1px;max-width:800px;margin:0;}
+#screen-ranking .ranking-title:focus {outline:none;}
+#screen-ranking .ranking-subtitle {font:13px/1.8 Arial,sans-serif;color:#c8becf;max-width:620px;margin:0;}
+#screen-ranking .ranking-formula {font:11px/1.8 Consolas,monospace;color:#f2bc93;opacity:1;margin:0;}
+#screen-ranking .ranking-meta {gap:10px;}
+#screen-ranking .ranking-pill {background:#10131dc9;border:1px solid #e6c19c33;color:#d9ccd9;font:10px/1.4 Arial,sans-serif;border-radius:3px;letter-spacing:.5px;padding:9px 12px;}
+#screen-ranking .ranking-toolbar {justify-content:space-between;align-items:end;gap:20px;margin:8px 0 12px;}
+#screen-ranking .ranking-toolbar h2 {font:26px/1.4 Georgia,serif;color:#f3e9db;letter-spacing:0;margin:0;}
+#screen-ranking .ranking-toolbar > span {font-size:10px;line-height:1.6;color:#b1a5bd;}
+#screen-ranking .btn-secondary {background:#111521;border:1px solid #eee0d344;color:#e5d8dc;border-radius:4px;font:600 11px/1.4 Arial,sans-serif;padding:12px 17px;box-shadow:none;letter-spacing:0;cursor:pointer;}
+#screen-ranking .btn-secondary:hover {border-color:#ffa76a;background:#241e21;}
+#screen-ranking :is(button,a,[role=button]):focus-visible {outline:2px solid #ffad72;outline-offset:4px;}
+#screen-ranking .ranking-list {gap:12px;}
+#screen-ranking .ranking-card {background:#11151f;border:1px solid #e0cde22b;border-radius:5px;padding:21px 25px;box-shadow:none;gap:22px;min-width:0;}
+#screen-ranking .ranking-card.rank-1 {background:linear-gradient(100deg,#2b201b,#11151f 60%);border-color:#e5a26577;}
+#screen-ranking .ranking-card.rank-2 {border-color:#a49cb155;}#screen-ranking .ranking-card.rank-3 {border-color:#b4866755;}
+#screen-ranking .ranking-card:hover {border-color:#ffad72;background:#1a1922;}
+#screen-ranking .ranking-card-left {min-width:0;gap:22px;flex:1;}
+#screen-ranking .ranking-card-left h2 {font:500 17px/1.4 Arial,sans-serif;letter-spacing:0;color:#f3e9db;overflow-wrap:anywhere;}
+#screen-ranking .ranking-card-left p {font:11px/1.7 Arial,sans-serif;color:#afa3bb;overflow-wrap:anywhere;}
+#screen-ranking .ranking-rank-medal {height:66px;width:66px;}
+#screen-ranking .ranking-rank-label {color:#c2afc2;font:10px Consolas,monospace;}
+#screen-ranking .ranking-rank {color:#cfbdcf;background:#1d1b29;border-radius:4px;font:22px Georgia,serif;}
+#screen-ranking .ranking-card-right {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;flex:0 1 480px;}
+#screen-ranking .ranking-card-right div {min-width:0;gap:8px;}
+#screen-ranking .ranking-card-right span {font:8px/1.5 Arial,sans-serif;color:#b2a6bd;letter-spacing:.8px;}
+#screen-ranking .ranking-card-right strong {font:22px Georgia,serif;color:#eddfd7;overflow-wrap:anywhere;}
+#screen-ranking .ranking-card-right div:first-child strong {color:#ffb47c;}
+#screen-ranking .ranking-state {background:#11151f;border:1px solid #e0cde22b;border-radius:5px;color:#c1b5cb;padding:35px;font:14px/1.7 Arial,sans-serif;}
+#screen-ranking .ranking-state-error {border-color:#df929455;color:#ffb1b1;}
+#screen-ranking .ranking-dialog {padding:0;border:1px solid #e5ad7a55;border-radius:6px;background:#11151f;color:#f3e9db;max-width:calc(100vw - 32px);width:900px;max-height:85dvh;margin:auto;box-shadow:0 30px 100px #0008;}
+#screen-ranking .ranking-dialog::backdrop {background:#05070ddd;backdrop-filter:blur(8px);}
+#screen-ranking .ranking-modal {width:100%;max-height:none;background:#11151f;border:0;border-radius:0;box-shadow:none;padding:28px;color:#f3e9db;overflow:visible;}
+#screen-ranking .ranking-modal-header {align-items:center;flex-direction:row;}
+#screen-ranking .ranking-modal-header h3 {font:26px/1.4 Georgia,serif;color:#f3e9db;}
+#screen-ranking .ranking-modal-header button {width:auto;}
+#screen-ranking .ranking-modal-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+#screen-ranking .ranking-info-card, #screen-ranking .ranking-time-breakdown {background:#0c101a;border:1px solid #dcc3dc26;border-radius:4px;padding:20px;}
+#screen-ranking .ranking-info-card h4, #screen-ranking .ranking-time-breakdown h4 {font:600 10px Arial,sans-serif;letter-spacing:1.5px;color:#eab18c;margin-bottom:16px;}
+#screen-ranking .ranking-info-card p {font:12px/1.7 Arial,sans-serif;color:#c4b7cb;}
+#screen-ranking .ranking-info-card p strong {color:#e5d6dc;font-weight:500;}
+#screen-ranking .level-badge-simple {background:#2a2030;color:#decaed;border-color:#bd91cb44;border-radius:3px;}
+#screen-ranking .ranking-time-breakdown > p {font:12px/1.8 Arial,sans-serif;color:#b1a4be;}
+#screen-ranking .ranking-breakdown-table {width:100%;min-width:0;border-collapse:collapse;font:12px Arial,sans-serif;}
+#screen-ranking .ranking-breakdown-table :is(th,td) {text-align:left;padding:12px;border-bottom:1px solid #dcc3dc26;color:#c9bdd1;background:none;}
+@media(max-width:950px) {#screen-ranking .ranking-shell {width:calc(100% - 48px);}#screen-ranking .ranking-card {flex-direction:column;align-items:stretch;}#screen-ranking .ranking-card-right {flex:auto;text-align:left;border-top:1px solid #e0cde21c;padding-top:18px;}#screen-ranking .ranking-toolbar {align-items:start;flex-direction:column;gap:8px;}}
+@media(max-width:600px) {#screen-ranking .ranking-shell {width:calc(100% - 32px);}#screen-ranking .ranking-page-header {gap:10px;font-size:8px;}#screen-ranking .ranking-page-header b {display:block;margin-top:6px;}#screen-ranking .ranking-page-header .btn-secondary {padding:11px;font-size:10px;}#screen-ranking .ranking-hero {padding:28px 22px;margin:20px 0;background-position:center;gap:16px;}#screen-ranking .ranking-card {padding:20px;}#screen-ranking .ranking-card-left {gap:16px;}#screen-ranking .ranking-card-right {grid-template-columns:repeat(2,minmax(0,1fr));gap:19px;}#screen-ranking .ranking-card-right span {font-size:9px;}#screen-ranking .ranking-modal {padding:20px;}#screen-ranking .ranking-modal-header h3 {font-size:22px;}#screen-ranking .ranking-modal-grid {grid-template-columns:1fr;}#screen-ranking .ranking-info-card {padding:16px;}#screen-ranking .ranking-info-card p {font-size:12px;}}
+@media(prefers-reduced-motion:reduce) {#screen-ranking *,#screen-ranking {animation:none!important;transition:none!important;}}
+#screen-ranking .ranking-shell, #screen-ranking .ranking-modal {text-align:left;}
+#screen-ranking .ranking-page-header .ranking-back {width:auto;flex-shrink:0;}

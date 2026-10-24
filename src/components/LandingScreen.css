@@ -1,0 +1,186 @@
+/* Landing-only theme. No shared player or admin variables are modified. */
+#root:has(> #screen-landing.active) {
+  width: 100%;
+  border: 0;
+}
+
+#screen-landing {
+  padding: 0;
+  gap: 0;
+  text-align: left;
+  justify-content: flex-start;
+  background: #090c14;
+}
+
+.haunt-landing {
+  --haunt-orange: #ff9954;
+  --haunt-ivory: #f3e9db;
+  width: 100%;
+  color: var(--haunt-ivory);
+  background: #090c14;
+  font-family: Arial, Helvetica, sans-serif;
+  isolation: isolate;
+}
+
+.haunt-stage {
+  position: relative;
+  isolation: isolate;
+  background: #0b0f1a;
+}
+
+.haunt-backdrop {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.haunt-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, #090c14a8 0%, #090c1445 39%, transparent 68%), linear-gradient(0deg, #090c14 0%, transparent 25%, transparent 85%, #090c1470 100%);
+}
+
+.haunt-header, .haunt-hero, .haunt-stage-bottom, .haunt-guide, .haunt-footer {
+  width: min(1320px, calc(100% - 112px));
+  margin-inline: auto;
+}
+
+.haunt-header {
+  min-height: 98px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid #f3e9db20;
+}
+
+.haunt-brand { display: flex; align-items: center; gap: 13px; }
+.haunt-brand img, .haunt-brand-fallback { width: 72px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.haunt-brand-fallback { display: grid; place-items: center; font-weight: bold; }
+.haunt-brand-name { display: block; font-size: 16px; font-weight: 700; }
+.haunt-brand-note { display: block; margin-top: 7px; font-size: 8px; letter-spacing: 2.5px; color: #b5b2be; }
+.haunt-nav { display: flex; align-items: center; gap: 30px; }
+.haunt-nav a, .haunt-nav button { font-family: inherit; font-size: 12px; color: var(--haunt-ivory); text-decoration: none; }
+.haunt-nav a { padding-block: 12px; }
+.haunt-nav button { border: 1px solid #f3e9db55; background: #10131b50; padding: 12px 17px; border-radius: 3px; cursor: pointer; }
+.haunt-nav button span { margin-left: 16px; color: var(--haunt-orange); }
+.haunt-nav a:hover, .haunt-stage-bottom a:hover { color: var(--haunt-orange); }
+.haunt-nav button:hover { background: #ff995422; border-color: var(--haunt-orange); }
+.haunt-landing :is(a, button):focus-visible { outline: 2px solid var(--haunt-orange); outline-offset: 5px; }
+
+.haunt-hero { position: relative; min-height: 660px; display: flex; align-items: center; padding-block: 62px 68px; }
+.haunt-copy { width: min(590px, 55%); }
+.haunt-eyebrow { display: flex; align-items: center; gap: 11px; color: #e4b393; font-size: 9px; font-weight: 600; letter-spacing: 2.3px; }
+.haunt-eyebrow > span { color: var(--haunt-orange); font-size: 19px; }
+.haunt-landing .haunt-title {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(60px, 7.4vw, 106px);
+  line-height: 1.02;
+  letter-spacing: -4px;
+  text-transform: uppercase;
+  color: var(--haunt-ivory);
+  margin: 24px 0 25px;
+  text-shadow: 0 4px 30px #0008;
+}
+.haunt-title > span { display: block; }
+.haunt-title .haunt-title-bottom { color: var(--haunt-orange); }
+.haunt-title em { font-family: Georgia, serif; text-transform: lowercase; font-weight: 400; font-size: .47em; color: var(--haunt-ivory); letter-spacing: -2px; vertical-align: 12%; margin-right: 9px; }
+.haunt-tagline { font-size: clamp(19px, 1.8vw, 24px); line-height: 1.5; letter-spacing: -.3px; color: #e4dee0; }
+.haunt-tagline strong { color: #ffb47f; font-weight: 500; }
+.haunt-description { max-width: 390px; color: #b7b5c1; font-size: 14px; line-height: 1.8; margin-top: 17px; }
+.haunt-enter { display: inline-flex; align-items: center; justify-content: space-between; gap: 40px; margin-top: 28px; padding: 17px 23px; border: 1px solid #ffb77c; border-radius: 3px; font: 700 13px Arial, sans-serif; letter-spacing: .2px; background: #f68d45; color: #1e100a; cursor: pointer; box-shadow: 0 5px 35px #d65a252b; transition: background .2s, transform .2s, box-shadow .2s; }
+.haunt-enter > span { font-size: 23px; line-height: 1; }
+.haunt-enter:hover { background: #ffad70; transform: translateY(-2px); box-shadow: 0 8px 40px #e2703540; }
+.haunt-enter:active { transform: translateY(0); }
+.haunt-login-note { font-size: 10px; color: #a9a5b3; margin-top: 13px; }
+.haunt-event { display: flex; align-items: center; gap: 14px; margin-top: 30px; font-size: 9px; color: #c0b8c0; letter-spacing: 1.6px; }
+.haunt-event i { width: 3px; height: 3px; border-radius: 50%; background: #c58b65; }
+.haunt-scene-label { position: absolute; right: 0; bottom: 42px; text-align: right; }
+.haunt-scene-label > span { color: #f1b987; font-size: 8px; letter-spacing: 2.2px; }
+.haunt-scene-label p { font-family: Georgia, serif; font-style: italic; font-size: 18px; color: #ded4ce; margin-top: 8px; text-shadow: 0 2px 12px #000; }
+.haunt-stage-bottom { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #f3e9db20; font-size: 8px; letter-spacing: 1.8px; color: #aaa3b3; }
+.haunt-stage-bottom a { text-decoration: none; color: #d1c7c2; font-size: 10px; letter-spacing: .5px; }
+.haunt-stage-bottom a span { margin-left: 15px; color: var(--haunt-orange); }
+
+.haunt-guide { padding-block: 47px 50px; scroll-margin-top: 24px; }
+.haunt-guide-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 33px; }
+.haunt-section-label { color: var(--haunt-orange); font-size: 8px; letter-spacing: 2px; margin-bottom: 12px; }
+.haunt-landing .haunt-guide-heading h2 { font-family: "Cinzel", Georgia, serif; font-weight: 400; font-size: clamp(22px, 2.3vw, 30px); line-height: 1.3; letter-spacing: -.4px; color: var(--haunt-ivory); margin: 0; }
+.haunt-guide-heading > p { color: #aaa5b4; font-size: 11px; margin-bottom: 4px; }
+.haunt-rules { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.haunt-rule { padding: 3px 27px 8px; border-left: 1px solid #f3e9db20; }
+.haunt-rule:first-child { padding-left: 0; border: 0; }
+.haunt-rule:last-child { padding-right: 0; }
+.haunt-rule-index { display: flex; align-items: center; gap: 12px; margin-bottom: 17px; }
+.haunt-rule-index > span:first-child { font-family: Georgia, serif; font-size: 30px; color: #cb8356; }
+.haunt-rule-index > span:last-child { font-size: 7px; color: #aaa0b3; letter-spacing: 2px; }
+.haunt-rule h3 { font-size: 14px; font-weight: 500; color: #eee2d4; margin-bottom: 12px; }
+.haunt-rule p { color: #aaa7b5; font-size: 12px; line-height: 1.85; max-width: 265px; }
+.haunt-footer { min-height: 73px; border-top: 1px solid #f3e9db20; display: flex; justify-content: space-between; align-items: center; gap: 20px; color: #9e99ab; font-size: 9px; }
+.haunt-footer b { margin-inline: 9px; color: var(--haunt-orange); }
+
+@media (min-width: 1600px) {
+  .haunt-hero { min-height: 740px; }
+}
+
+@media (max-width: 1000px) {
+  .haunt-header, .haunt-hero, .haunt-stage-bottom, .haunt-guide, .haunt-footer { width: calc(100% - 64px); }
+  .haunt-copy { width: 60%; }
+  .haunt-eyebrow { font-size: 8px; letter-spacing: 1.5px; }
+  .haunt-landing .haunt-title { font-size: clamp(53px, 7.4vw, 74px); letter-spacing: -3px; }
+  .haunt-hero { min-height: 630px; }
+  .haunt-backdrop { object-position: 58% center; }
+  .haunt-stage::before { background: linear-gradient(90deg, #090c14d9, #090c1470 47%, #090c140a), linear-gradient(0deg, #090c14, transparent 30%); }
+  .haunt-rule { padding-inline: 17px; }
+  .haunt-guide-heading > p { display: none; }
+}
+
+@media (max-width: 650px) {
+  .haunt-header, .haunt-hero, .haunt-stage-bottom, .haunt-guide, .haunt-footer { width: calc(100% - 40px); }
+  .haunt-header { min-height: 82px; gap: 10px; }
+  .haunt-brand { gap: 9px; }
+  .haunt-brand img, .haunt-brand-fallback { width: 54px; height: 36px; }
+  .haunt-brand-name { font-size: 12px; }
+  .haunt-brand-note { font-size: 6px; letter-spacing: 1.6px; }
+  .haunt-nav { gap: 0; }
+  .haunt-nav a { display: none; }
+  .haunt-nav button { font-size: 10px; padding: 10px; }
+  .haunt-nav button span { margin-left: 6px; }
+  .haunt-backdrop { top: 45px; height: 460px; object-position: 76% center; }
+  .haunt-stage::before { background: linear-gradient(0deg, #090c14 0%, #090c14 48%, #090c1400 77%, #090c1455 100%); }
+  .haunt-hero { min-height: auto; padding-block: 280px 30px; }
+  .haunt-copy { width: 100%; }
+  .haunt-eyebrow { font-size: 7px; letter-spacing: 1.3px; gap: 7px; }
+  .haunt-eyebrow > span { font-size: 15px; }
+  .haunt-landing .haunt-title { font-size: clamp(47px, 11.5vw, 72px); letter-spacing: -2px; margin-block: 18px 20px; }
+  .haunt-tagline { font-size: 20px; }
+  .haunt-description { font-size: 13px; max-width: 360px; }
+  .haunt-enter { margin-top: 24px; }
+  .haunt-event { font-size: 8px; gap: 11px; letter-spacing: 1px; }
+  .haunt-scene-label { display: none; }
+  .haunt-stage-bottom { min-height: 58px; }
+  .haunt-stage-bottom > span { font-size: 6px; letter-spacing: 1px; max-width: 130px; line-height: 1.8; }
+  .haunt-stage-bottom a { font-size: 9px; }
+  .haunt-guide { padding-block: 34px; }
+  .haunt-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 25px; }
+  .haunt-rule { padding: 0 0 0 18px; }
+  .haunt-rule:nth-child(odd) { border-left: 0; padding: 0 18px 0 0; }
+  .haunt-rule h3 { line-height: 1.5; }
+  .haunt-rule p { font-size: 11px; }
+  .haunt-rule-index { gap: 8px; }
+  .haunt-rule-index > span:last-child { font-size: 6px; letter-spacing: 1px; }
+  .haunt-footer { padding-block: 20px; flex-direction: column; align-items: flex-start; gap: 12px; font-size: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .haunt-enter { transition: none; }
+  html:has(#screen-landing.active) { scroll-behavior: auto; }
+}

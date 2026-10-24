@@ -1,141 +1,126 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useRef, useState } from "react";
+import "./StartScreen.css";
 
-const StartScreen = ({
-  onSubmit,
-  onBack,
-  loginError = "",
-  isLoggingIn = false,
-}) => {
-  const [institute_email, setInstituteEmail] = useState("");
+const StartScreen = ({ onSubmit, onBack, loginError = "", isLoggingIn = false }) => {
+  const [instituteEmail, setInstituteEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [invalidField, setInvalidField] = useState("");
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
 
-  useEffect(() => {
-    setTimeout(() => emailRef.current?.focus(), 300);
-  }, []);
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (isLoggingIn) return;
 
-  const handleSubmit = () => {
-    const trimmedEmail = institute_email.trim();
+    const trimmedEmail = instituteEmail.trim();
     const trimmedPassword = password.trim();
     if (!trimmedEmail || !trimmedPassword) {
       setError("Please enter both institute email and password.");
+      setInvalidField(!trimmedEmail ? "email" : "password");
+      (!trimmedEmail ? emailRef : passwordRef).current?.focus();
       return;
     }
     if (!trimmedEmail.includes("@")) {
       setError("Please enter a valid email.");
+      setInvalidField("email");
+      emailRef.current?.focus();
       return;
     }
+    setError("");
+    setInvalidField("");
     onSubmit(trimmedEmail, trimmedPassword);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleSubmit();
-    }
-  };
-
-  const handleEmailChange = (e) => {
-    setInstituteEmail(e.target.value);
+  const clearValidation = () => {
     setError("");
-  };
-
-  const handlePasswordChange = (e) => {
-    setPassword(e.target.value);
-    setError("");
+    setInvalidField("");
   };
 
   return (
-    <>
-      <div className="panel anim-reveal">
-        <div className="panel-title">🔐 &nbsp;Player Login</div>
-        <div className="panel-sub">
-          Login with your registered{" "}
-          <strong style={{ color: "var(--gold)" }}>
-            Institute Email and Password
-          </strong>{" "}
-          Only registered users can continue.
-        </div>
+    <div className="haunt-auth">
+      <header className="haunt-auth-header">
+        <span className="haunt-auth-wordmark">Treasure <em>of</em> Code</span>
+        <button type="button" className="haunt-auth-back" onClick={onBack} disabled={isLoggingIn}><span aria-hidden="true">←</span> Back to the hunt</button>
+      </header>
 
-        <div className="input-group">
-          <div className="input-label">Institute Email</div>
-          <input
-            ref={emailRef}
-            type="email"
-            className="key-input"
-            placeholder="Enter your institute email..."
-            autoComplete="off"
-            spellCheck="false"
-            value={institute_email}
-            onChange={handleEmailChange}
-            onKeyDown={handleKeyDown}
-          />
-        </div>
-
-        <div className="input-group">
-          <div className="input-label">Password</div>
-          <div className="password-field">
-            <input
-              ref={passwordRef}
-              type={showPassword ? "text" : "password"}
-              className="key-input key-input--with-toggle"
-              placeholder="Enter password..."
-              autoComplete="off"
-              spellCheck="false"
-              value={password}
-              onChange={handlePasswordChange}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              type="button"
-              className="password-toggle-btn"
-              onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              title={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? (
-                <svg
-                  className="password-toggle-icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.35 1.83l2.92 2.92A11.81 11.81 0 0 0 23 12c-1.73-4.39-5.99-7.5-11-7.5-1.4 0-2.73.24-3.96.69l2.16 2.16C10.78 7.13 11.38 7 12 7m-9.19-4.31L1.39 4.11l3.04 3.04.61.61A11.8 11.8 0 0 0 1 12c1.73 4.39 5.99 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.57.57 1.42 1.42 1.41-1.41zM7.53 10.36l1.55 1.55A2.5 2.5 0 0 0 12 14.92l1.55 1.55c-.47.2-1 .33-1.55.33a5 5 0 0 1-5-5c0-.56.12-1.08.33-1.54"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="password-toggle-icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5m0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10m0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6"
-                  />
-                </svg>
-              )}
-            </button>
+      <main className="haunt-auth-layout">
+        <aside className="haunt-auth-story" aria-label="Welcome to the hunt">
+          <img src="/halloween/moonlit-shrine.png" alt="" width="1672" height="941" />
+          <div className="haunt-auth-story-top"><span aria-hidden="true">✦</span> THE NEXT CHAPTER AWAITS</div>
+          <div className="haunt-auth-story-copy">
+            <p className="haunt-auth-kicker">BEYOND THE MOONLIT GATES</p>
+            <h2>A curious mind.<br />A fearless spirit.<br /><span>Your hunt begins.</span></h2>
+            <p>The clues are waiting. Step inside and let your code light the way.</p>
           </div>
-        </div>
+          <span className="haunt-auth-scene-note">01 / ENTER THE UNKNOWN</span>
+        </aside>
 
-        <div className="error-msg">{error || loginError}</div>
+        <section className="haunt-auth-form-panel" aria-labelledby="player-login-title">
+          <div className="haunt-auth-form-intro">
+            <p className="haunt-auth-kicker">YOUR KEY TO THE ADVENTURE</p>
+            <h1 id="player-login-title" tabIndex={-1}>Player login<span>.</span></h1>
+            <p>Welcome, code hunter. Sign in with your registered institute account to continue.</p>
+          </div>
 
-        <div className="btn-group" style={{ marginTop: ".5rem" }}>
-          <button className="btn-primary" onClick={handleSubmit} disabled={isLoggingIn}>
-            {isLoggingIn ? "⏳ Logging in..." : "Login →"}
-          </button>
-          <button className="btn-secondary" onClick={onBack}>
-            ← Back
-          </button>
-        </div>
-      </div>
+          <form className="haunt-auth-form" onSubmit={handleSubmit} noValidate aria-busy={isLoggingIn}>
+            <fieldset disabled={isLoggingIn}>
+              <legend className="haunt-auth-sr-only">Player credentials</legend>
+              <div className="haunt-auth-field">
+                <label htmlFor="player-institute-email">Institute email</label>
+                <input
+                  id="player-institute-email"
+                  name="email"
+                  ref={emailRef}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="Enter your institute email"
+                  required
+                  value={instituteEmail}
+                  aria-invalid={invalidField === "email"}
+                  aria-describedby={error || loginError ? "player-login-feedback" : undefined}
+                  onChange={(event) => { setInstituteEmail(event.target.value); clearValidation(); }}
+                />
+              </div>
+              <div className="haunt-auth-field">
+                <label htmlFor="player-password">Password</label>
+                <div className="haunt-auth-password">
+                  <input
+                    id="player-password"
+                    name="password"
+                    ref={passwordRef}
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
+                    required
+                    value={password}
+                    aria-invalid={invalidField === "password"}
+                    aria-describedby={error || loginError ? "player-login-feedback" : undefined}
+                    onChange={(event) => { setPassword(event.target.value); clearValidation(); }}
+                  />
+                  <button type="button" className="haunt-auth-toggle" onClick={() => setShowPassword((previous) => !previous)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>{showPassword ? "Hide" : "Show"}</button>
+                </div>
+              </div>
+            </fieldset>
 
-      <div className="divider"></div>
-    </>
+            <div className={`haunt-auth-feedback${error || loginError ? " has-error" : ""}`} id="player-login-feedback" role="status" aria-live="polite" aria-atomic="true">
+              {error || loginError}
+            </div>
+            <button type="submit" className="haunt-auth-submit" disabled={isLoggingIn}>
+              {isLoggingIn ? <><span className="haunt-auth-spinner" aria-hidden="true" /> Signing in…</> : <>Unlock the hunt <span aria-hidden="true">→</span></>}
+            </button>
+            <p className="haunt-auth-access">Only registered participants can enter.</p>
+          </form>
+
+          <div className="haunt-auth-help"><span aria-hidden="true">?</span><p>Having trouble signing in?<br /><strong>Contact your event coordinator for help.</strong></p></div>
+        </section>
+      </main>
+      <footer className="haunt-auth-footer"><span>CELEBRO</span><span>CRACK THE CLUES. SOLVE THE CODE.</span><span>CODING CLUB, IIIT VADODARA</span></footer>
+    </div>
   );
 };
 

@@ -48,6 +48,8 @@ function Rankings({ authToken }) {
     if (authToken) {
       initializeQuests()
     }
+  // Load once per authenticated admin session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken])
   
   const [linkCopied, setLinkCopied] = useState(false)
@@ -79,6 +81,8 @@ function Rankings({ authToken }) {
     if (selectedQuestId && authToken) {
       loadRanking(selectedQuestId)
     }
+  // Refresh when the selected quest or authenticated session changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedQuestId, authToken])
 
   const initializeQuests = async () => {

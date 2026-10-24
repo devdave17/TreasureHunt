@@ -35,7 +35,7 @@ export const playerAuth = (req, res, next) => {
     req.playerId = String(payload.sub);
     req.playerTokenPayload = payload;
     return next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: "Invalid or expired player token" });
   }
 };

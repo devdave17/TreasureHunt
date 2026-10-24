@@ -236,6 +236,7 @@ export const updateLevel = async (req, res) => {
 
     res.json({ message: "Level updated" })
   } catch (error) {
+    console.error("Error updating user level:", error)
     res.status(500).json({ error: "Failed to update level" })
   }
 }

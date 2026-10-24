@@ -33,6 +33,8 @@ function Quests({ authToken }) {
     if (authToken) {
       initializeData()
     }
+  // Load once per authenticated admin session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken])
 
   useEffect(() => {

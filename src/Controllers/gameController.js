@@ -49,7 +49,7 @@ const normalizeAnswer = (value) =>
 
 const toCanonicalAnswer = (value) =>
   normalizeAnswer(value)
-    .replace(/[\-_]+/g, " ")
+    .replace(/[-_]+/g, " ")
     .replace(/[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -243,7 +243,7 @@ const computeQuestLevelDistribution = async (questId) => {
     .filter((progress) => {
       const status = String(progress.status || "").toLowerCase();
       return (
-        !Boolean(progress.isSubmitted) &&
+        !progress.isSubmitted &&
         !["submitted", "completed", "timeout", "blocked", "abandoned"].includes(status)
       );
     });
@@ -385,7 +385,7 @@ const ensurePlayerAllowed = async (userId) => {
   }
 
   const userData = userDoc.data() || {};
-  if (Boolean(userData.isBlocked)) {
+  if (userData.isBlocked) {
     return {
       allowed: false,
       status: 403,

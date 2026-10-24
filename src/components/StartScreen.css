@@ -1,0 +1,98 @@
+/* Player login only. Keep other player screens and admin isolated. */
+#root:has(> #screen-start.active) { width: 100%; border: 0; }
+#screen-start { padding: 0; gap: 0; justify-content: flex-start; text-align: left; background: #090c14; }
+.haunt-auth { width: 100%; min-height: 100svh; background: #090c14; color: #f3e9db; font-family: Arial, Helvetica, sans-serif; }
+.haunt-auth-header, .haunt-auth-layout, .haunt-auth-footer { width: min(1200px, calc(100% - 112px)); margin-inline: auto; }
+.haunt-auth-header { min-height: 99px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #f3e9db20; }
+.haunt-auth-wordmark { font-family: "Cinzel", Georgia, serif; font-size: 20px; font-weight: 600; }
+.haunt-auth-wordmark em { font-family: Georgia, serif; color: #ff9954; font-weight: 400; font-size: 17px; }
+.haunt-auth-back { display: inline-flex; align-items: center; gap: 10px; background: none; border: none; color: #c2bccc; font-family: inherit; font-size: 12px; cursor: pointer; min-height: 44px; }
+.haunt-auth-back span { color: #ff9954; font-size: 19px; }
+.haunt-auth-back:hover { color: #ffb47f; }
+.haunt-auth :is(button, input):focus-visible { outline: 2px solid #ff9954; outline-offset: 4px; }
+.haunt-auth button:disabled { cursor: wait; opacity: .65; }
+.haunt-auth-layout { display: grid; grid-template-columns: 1.05fr 1fr; margin-block: 45px; min-height: 610px; border: 1px solid #f3e9db20; border-radius: 6px; overflow: hidden; }
+.haunt-auth-story { position: relative; isolation: isolate; display: flex; flex-direction: column; padding: 36px; min-width: 0; background: #161525; }
+.haunt-auth-story img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 76% center; }
+.haunt-auth-story::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #090c14f5 0%, #090c14bd 28%, #090c1420 65%, #090c1465 100%); }
+.haunt-auth-story-top { font-size: 8px; font-weight: 600; letter-spacing: 2px; color: #f4dcc6; display: flex; align-items: center; gap: 10px; }
+.haunt-auth-story-top span { color: #ff9954; font-size: 19px; }
+.haunt-auth-story-copy { margin-top: auto; padding-top: 200px; }
+.haunt-auth-kicker { font-size: 8px; line-height: 1.7; letter-spacing: 2px; color: #f0ab7d; }
+.haunt-auth .haunt-auth-story-copy h2 { font-family: "Cinzel", Georgia, serif; font-weight: 400; color: #f3e9db; font-size: clamp(23px, 2.6vw, 34px); letter-spacing: -.6px; line-height: 1.35; margin: 15px 0; }
+.haunt-auth-story-copy h2 span { color: #ffac71; }
+.haunt-auth-story-copy > p:last-child { max-width: 310px; font-size: 12px; line-height: 1.8; color: #d0c5ce; }
+.haunt-auth-scene-note { font-size: 7px; letter-spacing: 2px; color: #aca1b1; margin-top: 32px; }
+.haunt-auth-form-panel { background: #10131e; padding: 57px 54px 40px; min-width: 0; }
+.haunt-auth .haunt-auth-form-intro h1 { font-family: "Cinzel", Georgia, serif; color: #f3e9db; font-size: clamp(27px, 3vw, 38px); font-weight: 500; letter-spacing: -1px; line-height: 1.2; margin: 17px 0; }
+.haunt-auth-form-intro h1 span { color: #ff9954; }
+.haunt-auth-form-intro > p:last-child { color: #b8b3c4; font-size: 13px; line-height: 1.8; max-width: 340px; }
+.haunt-auth-form { margin-top: 30px; }
+.haunt-auth-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.haunt-auth-field + .haunt-auth-field { margin-top: 22px; }
+.haunt-auth-field label { display: block; color: #e1d8d6; font-size: 11px; font-weight: 500; margin-bottom: 10px; }
+.haunt-auth-field input { display: block; width: 100%; min-width: 0; height: 51px; padding: 0 15px; background: #0b0e18; border: 1px solid #353443; border-radius: 3px; color: #f4eade; font: 14px Arial, sans-serif; transition: border-color .2s; }
+.haunt-auth-field input::placeholder { color: #8f899c; opacity: 1; }
+.haunt-auth-field input:hover { border-color: #7d6257; }
+.haunt-auth-field input:focus { border-color: #ff9954; }
+.haunt-auth-field input[aria-invalid="true"] { border-color: #f2918c; }
+.haunt-auth-field input:disabled { opacity: .65; cursor: wait; }
+.haunt-auth-password { position: relative; }
+.haunt-auth-password input { padding-right: 73px; }
+.haunt-auth-toggle { position: absolute; top: 5px; right: 6px; height: 41px; min-width: 53px; padding: 0 8px; border: 0; border-radius: 2px; background: transparent; color: #e2b291; font: 11px Arial, sans-serif; cursor: pointer; }
+.haunt-auth-toggle:hover { background: #ff99540c; color: #ffc397; }
+.haunt-auth-feedback { min-height: 29px; font-size: 11px; line-height: 1.6; color: #ffb6af; }
+.haunt-auth-feedback.has-error { padding: 10px 0 12px; }
+.haunt-auth-submit { width: 100%; min-height: 51px; display: flex; align-items: center; justify-content: center; gap: 12px; border: 1px solid #ffb77c; border-radius: 3px; background: #f68d45; color: #1e100a; font: 700 13px Arial, sans-serif; cursor: pointer; box-shadow: 0 5px 25px #d65a251c; transition: background .2s, transform .2s; }
+.haunt-auth-submit > span:not(.haunt-auth-spinner) { margin-left: auto; font-size: 22px; line-height: 1; }
+.haunt-auth-submit:not(:disabled) { justify-content: space-between; padding-inline: 20px; }
+.haunt-auth-submit:hover:not(:disabled) { background: #ffad70; transform: translateY(-1px); }
+.haunt-auth-submit:active:not(:disabled) { transform: translateY(0); }
+.haunt-auth-access { font-size: 10px; color: #aaa3b6; text-align: center; margin-top: 14px; }
+.haunt-auth-help { display: flex; align-items: center; gap: 12px; border-top: 1px solid #f3e9db18; margin-top: 30px; padding-top: 22px; }
+.haunt-auth-help > span { display: grid; place-items: center; width: 27px; height: 27px; flex-shrink: 0; border: 1px solid #625344; border-radius: 50%; color: #e9ac80; font-family: Georgia, serif; font-size: 14px; }
+.haunt-auth-help p { font-size: 10px; line-height: 1.8; color: #c3bacb; }
+.haunt-auth-help strong { color: #9f97ac; font-weight: 400; }
+.haunt-auth-footer { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding-block: 0 26px; color: #a39aac; font-size: 9px; }
+.haunt-auth-footer > span:not(:first-child) { font-size: 7px; letter-spacing: 1.5px; }
+.haunt-auth-spinner { width: 15px; height: 15px; border: 2px solid #1e100a44; border-top-color: #1e100a; border-radius: 50%; animation: haunt-auth-spin .8s linear infinite; }
+.haunt-auth-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@keyframes haunt-auth-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 1000px) {
+  .haunt-auth-header, .haunt-auth-layout, .haunt-auth-footer { width: calc(100% - 64px); }
+  .haunt-auth-form-panel { padding: 42px 30px 35px; }
+  .haunt-auth-story { padding: 28px; }
+  .haunt-auth-layout { grid-template-columns: .9fr 1fr; }
+}
+@media (max-width: 700px) {
+  .haunt-auth-header, .haunt-auth-layout, .haunt-auth-footer { width: calc(100% - 40px); }
+  .haunt-auth-header { min-height: 80px; }
+  .haunt-auth-wordmark { font-size: 15px; }
+  .haunt-auth-wordmark em { font-size: 13px; }
+  .haunt-auth-back { font-size: 10px; gap: 6px; }
+  .haunt-auth-layout { grid-template-columns: 1fr; margin-block: 24px; }
+  .haunt-auth-story { min-height: 200px; padding: 23px; }
+  .haunt-auth-story img { object-position: 76% 30%; }
+  .haunt-auth-story::before { background: linear-gradient(90deg, #090c14db, #090c1460), linear-gradient(0deg, #10131e, transparent 60%); }
+  .haunt-auth-story-top, .haunt-auth-scene-note, .haunt-auth-story-copy > p:last-child { display: none; }
+  .haunt-auth-story-copy { padding-top: 0; margin-block: auto; }
+  .haunt-auth .haunt-auth-story-copy h2 { font-size: 22px; margin-bottom: 0; }
+  .haunt-auth-kicker { font-size: 7px; letter-spacing: 1.5px; }
+  .haunt-auth-form-panel { padding: 28px 23px; }
+  .haunt-auth .haunt-auth-form-intro h1 { font-size: 28px; margin-block: 13px; }
+  .haunt-auth-form { margin-top: 25px; }
+  .haunt-auth-field input { font-size: 16px; }
+  .haunt-auth-field input::placeholder { font-size: 12px; }
+  .haunt-auth-footer { flex-wrap: wrap; row-gap: 12px; }
+  .haunt-auth-footer > span:nth-child(2) { display: none; }
+}
+@media (max-width: 360px) {
+  .haunt-auth-header, .haunt-auth-layout, .haunt-auth-footer { width: calc(100% - 28px); }
+  .haunt-auth-form-panel { padding-inline: 18px; }
+  .haunt-auth-wordmark { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .haunt-auth-spinner { animation: none; }
+  .haunt-auth-submit, .haunt-auth-field input { transition: none; }
+}

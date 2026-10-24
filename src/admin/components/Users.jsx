@@ -43,6 +43,8 @@ function Users({ authToken, role }) {
     if (authToken) {
       fetchUsers();
     }
+  // Refresh when the authenticated role changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, role]);
 
   const handleSort = (column) => {

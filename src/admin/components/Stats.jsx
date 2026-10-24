@@ -42,7 +42,7 @@ function Stats({ authToken }) {
 
     questions.forEach((q) => {
       const difficulty = q.difficulty || "Medium"
-      if (difficultyStats.hasOwnProperty(difficulty)) {
+      if (Object.prototype.hasOwnProperty.call(difficultyStats, difficulty)) {
         difficultyStats[difficulty]++
       }
     })
