@@ -9,6 +9,7 @@ import {
   updatePlayerProgress,
   startQuestionTimer,
   finalizeQuestAttempt,
+  closeQuestSessionRoute,
   validateQuestAnswer,
 } from "../Controllers/gameController.js";
 import { playerAuth } from "../backend/middleware/playerAuth.js";
@@ -32,6 +33,7 @@ router.post(
   validateQuestAnswer,
 );
 router.post("/quests/:questId/finalize", playerAuth, finalizeQuestAttempt);
+router.post("/quests/:questId/close-session", playerAuth, closeQuestSessionRoute);
 router.post("/update-progress", playerAuth, updateProgressLimiter, updatePlayerProgress);
 router.post("/start-timer", playerAuth, startQuestionTimer);
 router.get("/progress/:userId", playerAuth, getUserProgress);

@@ -148,6 +148,17 @@ class MongoDocumentReference {
     await collection.updateOne({ _id: this.id }, { $set: payload })
   }
 
+  async updateIf(filter, data) {
+    await this.database.ensureReady()
+    const collection = this.database.mongoDb.collection(this.collectionName)
+    const payload = toStoredDocument(data)
+    const result = await collection.updateOne(
+      { _id: this.id, ...filter },
+      { $set: payload },
+    )
+    return result.modifiedCount > 0
+  }
+
   async delete() {
     await this.database.ensureReady()
     const collection = this.database.mongoDb.collection(this.collectionName)

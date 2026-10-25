@@ -13,7 +13,10 @@ import { adminAuth } from "./src/backend/middleware/adminAuth.js"
 import { loginAdmin } from "./src/Controllers/adminAuthController.js"
 import { db } from "./src/backend/database/dbConfig.js"
 import { adminLoginLimiter } from "./src/backend/middleware/rateLimiters.js"
-import { setQuestProgressPresence } from "./src/Controllers/gameController.js"
+import {
+  closeQuestSession,
+  setQuestProgressPresence,
+} from "./src/Controllers/gameController.js"
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5001
@@ -124,9 +127,23 @@ io.on("connection", (socket) => {
     }
   })
 
-  socket.on("leave-quest-room", (questId) => {
+  socket.on("leave-quest-room", async (questId) => {
     const normalizedQuestId = String(questId || "").trim()
     const room = normalizedQuestId ? `quest:${normalizedQuestId}` : socket.data?.questRoom
+
+    if (socket.data?.playerId && normalizedQuestId) {
+      try {
+        await closeQuestSession(
+          io,
+          socket.data.playerId,
+          normalizedQuestId,
+          "abandoned",
+          socket.id,
+        )
+      } catch (error) {
+        console.error("Failed to close quest session on leave:", error)
+      }
+    }
 
     if (room) {
       socket.leave(room)
@@ -143,7 +160,7 @@ io.on("connection", (socket) => {
       : ""
 
     if (socket.data?.playerId && questId) {
-      void setQuestProgressPresence(
+      void closeQuestSession(
         io,
         socket.data.playerId,
         questId,

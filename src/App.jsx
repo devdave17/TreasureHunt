@@ -22,6 +22,29 @@ const QUEST_ENTRY_PASSKEY = "cout<<masters;";
 const PLAYER_SESSION_KEY = "treasurehunt_player_session";
 const ACTIVE_QUEST_SESSION_KEY = "treasurehunt_active_quest";
 
+const getCompletedLevelNumbers = (completedLevels = []) =>
+  completedLevels instanceof Set
+    ? completedLevels
+    : new Set(
+        (Array.isArray(completedLevels) ? completedLevels : [])
+      .map((entry) =>
+        entry && typeof entry === "object"
+          ? Number(entry.questionLevel || entry.level || entry.currentLevel)
+          : Number(entry),
+      )
+      .filter((level) => Number.isFinite(level) && level > 0),
+      );
+
+const getNextUnlockedLevel = (completedLevels, totalQuestions) => {
+  const completed = getCompletedLevelNumbers(completedLevels);
+  for (let level = 1; level <= Math.max(1, totalQuestions); level += 1) {
+    if (!completed.has(level)) {
+      return level;
+    }
+  }
+  return Math.max(1, totalQuestions);
+};
+
 const getPlayedQuestSessionKey = (playerId) =>
   `treasurehunt_played_quests_${String(playerId || "guest")}`;
 
@@ -322,28 +345,26 @@ const App = () => {
       const completedLevels = Array.isArray(progress.completedQuestionLevels)
         ? progress.completedQuestionLevels
         : [];
-      const completedLevelNumbers = new Set(
-        completedLevels
-          .map((entry) =>
-            entry && typeof entry === "object"
-              ? Number(entry.questionLevel || entry.level || entry.currentLevel)
-              : Number(entry),
-          )
-          .filter((level) => Number.isFinite(level) && level > 0),
+      const completedLevelNumbers = getCompletedLevelNumbers(completedLevels);
+      const nextLevel = getNextUnlockedLevel(
+        completedLevelNumbers,
+        questionList.length,
       );
-      const nextLevel = Math.max(1, completedLevelNumbers.size + 1);
 
       setQuestions(questionList);
       setSelectedQuestId(questId);
       setActiveQuestId(questId);
       setActiveRiddle(Math.min(nextLevel, Math.max(questionList.length, 1)));
       setSolvedCount(completedLevelNumbers.size);
-      const recoveredAttemptStartedAt = progress.attemptStartedAt
-        ? Date.parse(progress.attemptStartedAt)
-        : Date.now();
+      setIsQuestEntryVerified(completedLevelNumbers.size > 0);
+      const recoveredSessionStartedAt = progress.currentSessionStartedAt
+        ? Date.parse(progress.currentSessionStartedAt)
+        : progress.attemptStartedAt
+          ? Date.parse(progress.attemptStartedAt)
+          : Date.now();
       setStartTime(
-        Number.isFinite(recoveredAttemptStartedAt)
-          ? recoveredAttemptStartedAt
+        Number.isFinite(recoveredSessionStartedAt)
+          ? recoveredSessionStartedAt
           : Date.now(),
       );
       setTimerEndAtMs(nextEndAtMs);
@@ -819,12 +840,14 @@ const App = () => {
     setQuestLevelCounts({});
 
     let timerEndAtMsForLaunch = getQuestEndAtMs(questMeta);
+    let questionList = [];
+    let resumedCompletedLevels = [];
     try {
       const response = await fetch(
         `${GAME_API_BASE}/game/quests/${questToLaunch}/questions`,
       );
       const payload = await response.json();
-      const questionList = Array.isArray(payload?.questions)
+      questionList = Array.isArray(payload?.questions)
         ? payload.questions
         : [];
 
@@ -849,6 +872,11 @@ const App = () => {
           if (Number.isFinite(Number(timerResponse?.timerEndAtMs))) {
             timerEndAtMsForLaunch = Number(timerResponse.timerEndAtMs);
           }
+          resumedCompletedLevels = Array.isArray(
+            timerResponse?.questProgress?.completedQuestionLevels,
+          )
+            ? timerResponse.questProgress.completedQuestionLevels
+            : [];
           syncServerClock(
             timerResponse?.serverNowMs,
             timerResponse?.clientRequestSentAtMs,
@@ -895,8 +923,16 @@ const App = () => {
 
     setStartTime(Date.now());
     setActiveQuestId(String(questToLaunch));
-    setSolvedCount(0);
-    setActiveRiddle(1);
+    const resumedCompletedLevelNumbers =
+      getCompletedLevelNumbers(resumedCompletedLevels);
+    const nextUnlockedLevel = getNextUnlockedLevel(
+      resumedCompletedLevelNumbers,
+      questionList.length,
+    );
+    setSolvedCount(resumedCompletedLevelNumbers.size);
+    setActiveRiddle(
+      Math.min(nextUnlockedLevel, Math.max(questionList.length, 1)),
+    );
     const remainingSeconds = Math.max(
       0,
       Math.ceil((timerEndAtMsForLaunch - getEffectiveServerNowMs()) / 1000),
@@ -905,7 +941,7 @@ const App = () => {
     setTimeRemaining(remainingSeconds);
     setQuestTimeLimitSeconds(questDurationSeconds);
     setIsTimeExpired(false);
-    setIsQuestEntryVerified(false);
+    setIsQuestEntryVerified(resumedCompletedLevelNumbers.size > 0);
     setFinalElapsedSeconds(null);
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
@@ -1026,9 +1062,38 @@ const App = () => {
     }
   };
 
-  const showWinner = () => {
-    if (startTime) {
-      setFinalElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
+  const showWinner = async () => {
+    const questIdForFinalize = activeQuestId || selectedQuestId;
+    let finalElapsedSeconds = null;
+    if (questIdForFinalize && userDetails.id) {
+      try {
+        const finalized = await gameApi.finalizeQuestAttempt(
+          questIdForFinalize,
+          userDetails.id,
+          {
+            reason: "completed",
+            solvedCount,
+            totalQuestions: questions.length,
+            currentLevel: activeRiddle,
+          },
+          localStorage.getItem("player_token"),
+        );
+        finalElapsedSeconds = Number(finalized?.finalElapsedSeconds);
+      } catch (error) {
+        console.error("Failed to finalize completed quest attempt:", error);
+      }
+    }
+    if (!Number.isFinite(finalElapsedSeconds) && startTime) {
+      finalElapsedSeconds = Math.max(
+        0,
+        Math.floor((getEffectiveServerNowMs() - startTime) / 1000),
+      );
+    }
+    if (Number.isFinite(finalElapsedSeconds)) {
+      setFinalElapsedSeconds(finalElapsedSeconds);
+    }
+    if (socketRef.current && questIdForFinalize) {
+      socketRef.current.emit("leave-quest-room", String(questIdForFinalize));
     }
     localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
     goScreen("screen-winner");
@@ -1049,6 +1114,7 @@ const App = () => {
     setFinalElapsedSeconds(null);
     setQuestions([]);
     setQuestLevelCounts({});
+    setSelectedQuestId("");
     setActiveQuestId("");
     setQuestError("");
     setLoginError("");
@@ -1071,15 +1137,33 @@ const App = () => {
     setShowExitConfirm(false);
   };
 
-  const handleConfirmExitQuest = () => {
-    if (socketRef.current) {
-      const questRoomId = String(activeQuestId || selectedQuestId || "").trim();
-      if (questRoomId) {
+  const handleConfirmExitQuest = async () => {
+    const questRoomId = String(activeQuestId || selectedQuestId || "").trim();
+    try {
+      if (questRoomId && userDetails.id) {
+        await Promise.race([
+          gameApi.closeQuestSession(
+            questRoomId,
+            userDetails.id,
+            localStorage.getItem("player_token"),
+          ),
+          new Promise((_, reject) => {
+            window.setTimeout(
+              () => reject(new Error("Quest session close timed out")),
+              3000,
+            );
+          }),
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to save quest session before exit:", error);
+    } finally {
+      if (socketRef.current && questRoomId) {
         socketRef.current.emit("leave-quest-room", questRoomId);
       }
+      localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
+      resetGame();
     }
-    localStorage.removeItem(ACTIVE_QUEST_SESSION_KEY);
-    resetGame();
   };
 
   const handleCancelReplayWarning = () => {

@@ -174,6 +174,24 @@ export const gameApi = {
     return parseJsonSafe(response);
   },
 
+  async closeQuestSession(questId, userId, token) {
+    const response = await fetch(
+      `${BASE_URL}/game/quests/${encodeURIComponent(questId)}/close-session`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(token),
+        body: JSON.stringify({ userId }),
+      },
+    );
+
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || "Failed to close quest session");
+    }
+
+    return parseJsonSafe(response);
+  },
+
   // Get question details
   async getQuestion(questionId, token) {
     const response = await fetch(`${BASE_URL}/game/question/${questionId}`, {

@@ -357,17 +357,103 @@ export const setQuestProgressPresence = async (
     return;
   }
 
+  const now = new Date();
+  const isSameActivePresence =
+    status === "active" &&
+    progress.status === "active" &&
+    presenceId &&
+    progress.presenceSocketId === presenceId;
+  const sessionStartedAtMs = normalizeTimestampLike(progress.currentSessionStartedAt);
+  const sessionSeconds = status === "abandoned" && Number.isFinite(sessionStartedAtMs)
+    ? Math.max(0, Math.floor((now.getTime() - sessionStartedAtMs) / 1000))
+    : 0;
+  const totalActiveSeconds = Math.max(
+    0,
+    getStoredActiveSeconds(progress),
+  ) + sessionSeconds;
+
   await progressRef.set(
     {
       status,
       presenceSocketId: status === "active" ? presenceId : null,
-      lastActive: new Date(),
-      updatedAt: new Date(),
+      totalActiveSeconds,
+      currentSessionStartedAt:
+        status === "active"
+          ? isSameActivePresence
+            ? progress.currentSessionStartedAt
+            : now
+          : null,
+      lastSessionEndedAt: status === "active" ? progress.lastSessionEndedAt || null : now,
+      lastActive: now,
+      updatedAt: now,
     },
     { merge: true },
   );
   invalidateQuestRankingCache(normalizedQuestId);
   scheduleQuestDistributionBroadcast(io, normalizedQuestId);
+};
+
+export const closeQuestSession = async (
+  io,
+  userId,
+  questId,
+  status = "abandoned",
+  presenceId = "",
+) => {
+  const normalizedUserId = String(userId || "").trim();
+  const normalizedQuestId = String(questId || "").trim();
+  if (!normalizedUserId || !normalizedQuestId) {
+    return null;
+  }
+
+  const progressRef = getQuestProgressDocRef(normalizedUserId, normalizedQuestId);
+  const progressSnapshot = await progressRef.get();
+  if (!progressSnapshot.exists) {
+    return null;
+  }
+
+  const progress = progressSnapshot.data() || {};
+  if (progress.isSubmitted || progress.status === "submitted") {
+    return progress;
+  }
+  if (
+    presenceId &&
+    progress.presenceSocketId &&
+    progress.presenceSocketId !== presenceId
+  ) {
+    return progress;
+  }
+
+  const now = new Date();
+  const sessionStartedAtMs = normalizeTimestampLike(progress.currentSessionStartedAt);
+  const sessionSeconds = Number.isFinite(sessionStartedAtMs)
+    ? Math.max(0, Math.floor((now.getTime() - sessionStartedAtMs) / 1000))
+    : 0;
+  const updatedProgress = {
+    status,
+    presenceSocketId: null,
+    totalActiveSeconds:
+      getStoredActiveSeconds(progress) + sessionSeconds,
+    currentSessionStartedAt: null,
+    lastSessionEndedAt: now,
+    lastActive: now,
+    updatedAt: now,
+  };
+
+  const closed = await progressRef.updateIf(
+    {
+      status: progress.status || "active",
+      currentSessionStartedAt: progress.currentSessionStartedAt || null,
+    },
+    updatedProgress,
+  );
+  if (!closed) {
+    const latestSnapshot = await progressRef.get();
+    return latestSnapshot.exists ? latestSnapshot.data() : null;
+  }
+  invalidateQuestRankingCache(normalizedQuestId);
+  scheduleQuestDistributionBroadcast(io, normalizedQuestId);
+  return { ...progress, ...updatedProgress };
 };
 
 const ensurePlayerAllowed = async (userId) => {
@@ -440,6 +526,15 @@ const normalizeTimestampLike = (value) => {
 };
 
 const getQuestElapsedSeconds = (progress = {}) => {
+  const storedActiveSeconds = Number(progress.totalActiveSeconds);
+  const sessionStartedMs = normalizeTimestampLike(progress.currentSessionStartedAt);
+  if (Number.isFinite(storedActiveSeconds) || progress.currentSessionStartedAt) {
+    const runningSeconds = Number.isFinite(sessionStartedMs)
+      ? Math.max(0, Math.floor((Date.now() - sessionStartedMs) / 1000))
+      : 0;
+    return Math.max(0, storedActiveSeconds || 0) + runningSeconds;
+  }
+
   const questStartMs = normalizeTimestampLike(progress.questStartTime);
   if (!Number.isFinite(questStartMs)) {
     return null;
@@ -451,6 +546,29 @@ const getQuestElapsedSeconds = (progress = {}) => {
     questStartMs;
 
   return Math.max(0, Math.floor((lastActiveMs - questStartMs) / 1000));
+};
+
+const getStoredActiveSeconds = (progress = {}) => {
+  const storedSeconds = Number(progress.totalActiveSeconds);
+  const finalSeconds = Number(progress.finalElapsedSeconds);
+  const validStoredSeconds = Number.isFinite(storedSeconds) && storedSeconds >= 0
+    ? storedSeconds
+    : 0;
+  const validFinalSeconds = Number.isFinite(finalSeconds) && finalSeconds >= 0
+    ? finalSeconds
+    : 0;
+
+  if (validStoredSeconds > 0 || validFinalSeconds > 0) {
+    return Math.max(validStoredSeconds, validFinalSeconds);
+  }
+
+  const startMs = normalizeTimestampLike(progress.attemptStartedAt || progress.questStartTime);
+  const endMs = normalizeTimestampLike(progress.lastSessionEndedAt || progress.lastActive);
+  if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+    return Math.floor((endMs - startMs) / 1000);
+  }
+
+  return 0;
 };
 
 const sumQuestionCompletionSeconds = (questionCompletionSeconds) => {
@@ -727,8 +845,6 @@ export const getQuestRanking = async (req, res) => {
           progress.questionCompletionSeconds && typeof progress.questionCompletionSeconds === "object"
             ? progress.questionCompletionSeconds
             : {};
-        const totalSolveSeconds = sumQuestionCompletionSeconds(questionCompletionSeconds);
-
         return {
           userId: String(progress.userId || ""),
           name: String(userData.name || progress.playerName || "Unknown player"),
@@ -739,10 +855,7 @@ export const getQuestRanking = async (req, res) => {
           totalCombinedScore: mapScore + hackerRankScore,
           totalScore,
           solvedQuestions: normalizedCompletedLevels.length,
-          totalCompletionSeconds:
-            Number.isFinite(totalSolveSeconds) && totalSolveSeconds >= 0
-              ? totalSolveSeconds
-              : elapsedSeconds,
+          totalCompletionSeconds: elapsedSeconds,
           totalElapsedSeconds: elapsedSeconds,
           currentLevel: Number(progress.currentLevel) || Number(progress.currentQuestionLevel) || 0,
           completedQuestionLevels: normalizedCompletedLevels,
@@ -1023,28 +1136,39 @@ export const startQuestionTimer = async (req, res) => {
       return res.status(409).json({ error: "This quest has already ended" });
     }
 
+    const existingProgressSnapshot = await questProgressRef.get();
+    const existingProgress = existingProgressSnapshot.exists
+      ? existingProgressSnapshot.data() || {}
+      : {};
+    const isResuming = Boolean(existingProgressSnapshot.exists);
     const questProgress = {
       userId: String(userId),
       questId: String(questId),
       questName: String(questName || ""),
       questionStartTime: now,
       questStartTime: new Date(questStartAtMs),
-      attemptStartedAt: now,
+      attemptStartedAt: existingProgress.attemptStartedAt || now,
       timerEndAtMs,
       currentQuestionLevel: Number(level),
       currentLevel: Number(level),
       status: "active",
-      HackerRank_score: 0,
-      totalScore: 0,
-      score: 0,
-      completedQuestionLevels: [],
-      questionCompletionSeconds: [],
+      HackerRank_score: normalizeHackerRankScore(existingProgress.HackerRank_score),
+      totalScore: Number(existingProgress.totalScore) || Number(existingProgress.score) || 0,
+      score: Number(existingProgress.score) || Number(existingProgress.totalScore) || 0,
+      completedQuestionLevels: Array.isArray(existingProgress.completedQuestionLevels)
+        ? existingProgress.completedQuestionLevels
+        : [],
+      questionCompletionSeconds: Array.isArray(existingProgress.questionCompletionSeconds)
+        ? existingProgress.questionCompletionSeconds
+        : [],
       questDurationMinutes,
+      totalActiveSeconds: getStoredActiveSeconds(existingProgress),
+      currentSessionStartedAt: now,
+      lastSessionEndedAt: existingProgress.lastSessionEndedAt || null,
       lastActive: now,
       updatedAt: now,
     };
 
-    // Starting a quest should always create a fresh attempt for that quest.
     await questProgressRef.set(questProgress);
     invalidateQuestRankingCache(questId);
     scheduleQuestDistributionBroadcast(req.io, questId);
@@ -1067,10 +1191,39 @@ export const startQuestionTimer = async (req, res) => {
       serverNowMs: now.getTime(),
       questDurationMinutes,
       questProgress,
+      isResuming,
     });
   } catch (error) {
     console.error("Error starting question timer:", error);
     res.status(500).json({ error: "Failed to start timer" });
+  }
+};
+
+export const closeQuestSessionRoute = async (req, res) => {
+  try {
+    const { questId } = req.params || {};
+    const userId = String(req.playerId || "");
+    if (!questId || !userId) {
+      return res.status(400).json({ error: "questId and userId are required" });
+    }
+
+    const progress = await closeQuestSession(
+      req.io,
+      userId,
+      questId,
+      "abandoned",
+    );
+
+    return res.json({
+      message: "Quest session paused",
+      questId: String(questId),
+      userId,
+      totalActiveSeconds: getStoredActiveSeconds(progress || {}),
+      status: progress?.status || "abandoned",
+    });
+  } catch (error) {
+    console.error("Error closing quest session:", error);
+    return res.status(500).json({ error: "Failed to close quest session" });
   }
 };
 
@@ -1140,9 +1293,16 @@ export const finalizeQuestAttempt = async (req, res) => {
     const existingProgress = questProgressSnap.exists ? questProgressSnap.data() || {} : {};
     const now = new Date();
     const questStartMs = normalizeTimestampLike(existingProgress.questStartTime);
-    const finalElapsedSeconds = Number.isFinite(questStartMs)
-      ? Math.max(0, Math.floor((now.getTime() - questStartMs) / 1000))
-      : null;
+    const sessionStartedMs = normalizeTimestampLike(existingProgress.currentSessionStartedAt);
+    const runningSessionSeconds = Number.isFinite(sessionStartedMs)
+      ? Math.max(0, Math.floor((now.getTime() - sessionStartedMs) / 1000))
+      : 0;
+    const finalElapsedSeconds = Number.isFinite(sessionStartedMs) ||
+      Number.isFinite(Number(existingProgress.totalActiveSeconds))
+      ? getStoredActiveSeconds(existingProgress) + runningSessionSeconds
+      : Number.isFinite(questStartMs)
+        ? Math.max(0, Math.floor((now.getTime() - questStartMs) / 1000))
+        : null;
 
     const questionStartMs = normalizeTimestampLike(existingProgress.questionStartTime);
     const currentLevelNumber = Number(currentLevel) || Number(existingProgress.currentLevel) || 0;
@@ -1175,6 +1335,10 @@ export const finalizeQuestAttempt = async (req, res) => {
           ? "auto_submitted_timeout"
           : "submitted",
       finalElapsedSeconds,
+      totalActiveSeconds: finalElapsedSeconds,
+      currentSessionStartedAt: null,
+      lastSessionEndedAt: now,
+      presenceSocketId: null,
       questionCompletionSeconds,
       lastActive: now,
       updatedAt: now,
