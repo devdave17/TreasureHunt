@@ -1,0 +1,55 @@
+@import "./TreasureRevealMotion.css";
+
+/* Reward-only presentation. No gameplay timings or validation depend on this scene. */
+.hg-result-art:has(.treasure-reveal) {
+  min-height: 620px;
+  border-radius: 150px 150px 5px 5px;
+  border-color: #dbac614d;
+  background: radial-gradient(ellipse at 50% 30%, #3e203b77, transparent 65%), #0f0914;
+}
+.hg-result-art:has(.treasure-reveal)::after { display: none; }
+.treasure-reveal { position: relative; width: 100%; isolation: isolate; }
+.treasure-scene { position: relative; height: 465px; overflow: hidden; }
+.treasure-arch { position: absolute; inset: 28px 10% 0; border: 1px solid #d5ae6b2e; border-radius: 180px 180px 0 0; box-shadow: 0 0 0 13px #a36f3d09, inset 0 0 65px #000; }
+.treasure-arch::before { content: ''; position: absolute; inset: 13px; border: 1px solid #d5ae6b1a; border-radius: inherit; }
+.hg-page .treasure-inscription { position: absolute; z-index: 2; top: 28px; width: 100%; text-align: center; color: #dec08a; font: 10px var(--h-mono); letter-spacing: 3px; }
+.treasure-halo { position: absolute; width: 270px; height: 270px; left: calc(50% - 135px); top: 104px; border: 1px solid #be884433; border-radius: 50%; }
+.treasure-halo::before, .treasure-halo::after { content: ''; position: absolute; border: 1px dashed #d8a85e22; border-radius: 50%; inset: 15px; }
+.treasure-halo::after { inset: 34px; border-style: solid; }
+.treasure-halo i { position: absolute; width: 8px; height: 8px; border: 1px solid #e9be7799; transform: rotate(45deg); top: -4px; left: calc(50% - 4px); background: #1f1120; }
+.treasure-halo i:nth-child(2) { top: 72%; left: 5%; }.treasure-halo i:nth-child(3) { top: 72%; left: 92%; }
+.treasure-chest { position: absolute; width: 100%; max-width: none; height: auto; left: 0; bottom: 0; overflow: visible; filter: drop-shadow(0 18px 20px #0009); }
+.treasure-lid { transform-box: view-box; transform-origin: 160px 300px; }
+.treasure-rays { position: absolute; width: 300px; height: 350px; left: calc(50% - 150px); bottom: 91px; opacity: 0; background: repeating-conic-gradient(from -35deg at 50% 100%, transparent 0deg 8deg, #ffe1a033 9deg 14deg, transparent 15deg 22deg); clip-path: polygon(50% 100%, 0 0, 100% 0); mask-image: linear-gradient(transparent, #000 40%); transform-origin: 50% 100%; }
+.treasure-haze { position: absolute; inset: 10% 0 10%; opacity: 0; background: radial-gradient(ellipse at 50% 65%, #ffc35d33, transparent 62%); }
+.treasure-prize, .treasure-inner-light, .treasure-floor-light { opacity: 0; }
+.treasure-prize { transform-box: view-box; transform-origin: 320px 240px; }
+.treasure-particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.treasure-particles i { position: absolute; left: calc(45% + var(--spark) * .6%); bottom: 140px; color: #ffdc8c; font-style: normal; font-size: 12px; opacity: 0; text-shadow: 0 0 9px #ff9c3e; }
+.hg-page .treasure-scene-caption { position: absolute; bottom: 12px; width: 100%; padding: 0 15px; text-align: center; color: #b99e7c; font: 9px/1.7 var(--h-mono); letter-spacing: 1.3px; }
+.treasure-reveal-controls { position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px; padding: 10px 24px 25px; }
+.treasure-open-button { min-height: 48px; box-shadow: 0 0 28px #e7a14b24; }
+.treasure-sound-button { min-height: 44px; background: transparent; border: 1px solid #b99c6b55; padding: 8px 13px; color: #e9d4b4; font: 11px var(--h-mono); cursor: pointer; }
+.treasure-sound-button:hover { border-color: #e9be77; background: #edb35b0c; }
+.hg-page .treasure-reveal-status { width: 100%; min-height: 36px; color: #c2b29d; font: 11px/1.8 var(--h-body); text-align: center; }
+.is-open .treasure-lid { transform: rotate(-27deg); }
+.is-open .treasure-prize, .is-open .treasure-inner-light, .is-open .treasure-floor-light, .is-open .treasure-haze { opacity: 1; }
+.is-open .treasure-rays { opacity: .65; }
+
+@media (min-width: 701px) and (max-width: 1000px) {
+  .hg-result-art:has(.treasure-reveal) { min-height: 560px; }
+  .treasure-scene { height: 380px; }
+  .treasure-halo { width: 210px; height: 210px; left: calc(50% - 105px); }
+}
+@media (max-width: 700px) {
+  .hg-result-art:has(.treasure-reveal) { min-height: 0; border-radius: 90px 90px 5px 5px; }
+  .treasure-scene { height: clamp(300px, 83vw, 445px); }
+  .hg-page .treasure-inscription { top: 34px; font-size: 9px; letter-spacing: 2px; }
+  .treasure-halo { width: 210px; height: 210px; left: calc(50% - 105px); top: 65px; }
+  .treasure-arch { inset: 15px 7% 0; }
+  .treasure-reveal-controls { padding: 8px 15px 20px; gap: 10px; }
+  .treasure-rays { width: 240px; left: calc(50% - 120px); bottom: 65px; height: 250px; }
+  .treasure-particles i { bottom: 100px; }
+}
+html[data-effects=off] .treasure-particles { display: none; }
+@media (prefers-reduced-motion: reduce) { .treasure-particles { display: none; } }

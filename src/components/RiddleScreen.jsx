@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RuneIcon } from './HauntSymbols';
 import OfficialLogo from './OfficialLogo';
 import './HauntGame.css';
+import { prepareVictoryAudio } from '../utils/victoryAudio';
 
 function Challenge({ riddle, onSubmit, onBack, isSolved, submissionError, isSubmitting }) {
   const [answer, setAnswer] = useState('');
@@ -22,6 +23,7 @@ function Challenge({ riddle, onSubmit, onBack, isSolved, submissionError, isSubm
     const key = answer.trim().toUpperCase();
     if (!key) { setError("Please enter your program's output."); inputRef.current?.focus(); return; }
     setError('');
+    void prepareVictoryAudio();
     onSubmit(key);
   };
   if (!riddle) return null;
