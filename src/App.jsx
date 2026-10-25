@@ -289,7 +289,8 @@ const App = () => {
     }
   };
 
-  const recoverActiveQuest = async () => {
+  const recoverActiveQuest = async (options = {}) => {
+    const entryVerified = Boolean(options?.entryVerified);
     const storedQuestId = String(
       localStorage.getItem(ACTIVE_QUEST_SESSION_KEY) || "",
     ).trim();
@@ -356,7 +357,9 @@ const App = () => {
       setActiveQuestId(questId);
       setActiveRiddle(Math.min(nextLevel, Math.max(questionList.length, 1)));
       setSolvedCount(completedLevelNumbers.size);
-      setIsQuestEntryVerified(completedLevelNumbers.size > 0);
+      setIsQuestEntryVerified(
+        entryVerified || completedLevelNumbers.size > 0,
+      );
       const recoveredSessionStartedAt = progress.currentSessionStartedAt
         ? Date.parse(progress.currentSessionStartedAt)
         : progress.attemptStartedAt
@@ -790,6 +793,7 @@ const App = () => {
 
   const launchSelectedQuest = async (questId, options = {}) => {
     const skipReplayWarning = Boolean(options?.skipReplayWarning);
+    const entryVerified = Boolean(options?.entryVerified);
     const questToLaunch = questId || selectedQuestId;
     const questMeta =
       quests.find((quest) => quest.id === questToLaunch) || null;
@@ -941,7 +945,9 @@ const App = () => {
     setTimeRemaining(remainingSeconds);
     setQuestTimeLimitSeconds(questDurationSeconds);
     setIsTimeExpired(false);
-    setIsQuestEntryVerified(resumedCompletedLevelNumbers.size > 0);
+    setIsQuestEntryVerified(
+      entryVerified || resumedCompletedLevelNumbers.size > 0,
+    );
     setFinalElapsedSeconds(null);
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
@@ -1207,9 +1213,9 @@ const App = () => {
         localStorage.getItem(ACTIVE_QUEST_SESSION_KEY) || "",
       ).trim();
       if (storedActiveQuestId === String(nextQuestId)) {
-        void recoverActiveQuest();
+        void recoverActiveQuest({ entryVerified: true });
       } else {
-        void launchSelectedQuest(nextQuestId);
+        void launchSelectedQuest(nextQuestId, { entryVerified: true });
       }
     }
   };
