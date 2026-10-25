@@ -1,0 +1,10 @@
+@import url("https://fonts.googleapis.com/css2?family=Creepster&family=Barlow+Condensed:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Share+Tech+Mono&family=Cinzel:wght@400;600;700&display=swap");
+
+:root {
+  color-scheme:dark;
+  --h-bg:#0b0612;--h-panel:#1a1025;--h-panel-raised:#251632;--h-orange:#ff7a1a;--h-gold:#e9be77;--h-purple:#bd8ce8;--h-green:#7cff4f;
+  --h-text:#f6e9db;--h-muted:#bfb0cb;--h-line:#af85c72e;--h-danger:#ff9caa;
+  --h-body:'Space Grotesk',Arial,Helvetica,sans-serif;--h-serif:'Space Grotesk',Arial,sans-serif;--h-display:'Creepster',Impact,'Arial Black',sans-serif;--h-condensed:'Barlow Condensed',Impact,'Arial Narrow',sans-serif;--h-mono:'Share Tech Mono',Consolas,monospace;
+  --h-fog-opacity:.2;--h-ember-duration:14s;
+  --bg:var(--h-bg);--bg2:#170e22;--bg3:#21132e;--gold:var(--h-gold);--gold-light:#ffe0a1;--teal:var(--h-purple);--text:var(--h-text);--text-dim:var(--h-muted);
+}

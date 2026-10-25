@@ -1,5 +1,6 @@
 import "./HauntGame.css";
 import "./HauntMap.css";
+import { RuneIcon } from "./HauntSymbols";
 
 // Routes grow with the question list; desktop snakes across three stops per row.
 function routeLayout(total, mobile = false) {
@@ -45,12 +46,12 @@ export default function MapScreen({ solvedCount = 0, activeRiddle, onNodeClick, 
   const mobile = routeLayout(total, true);
   return <main className="hg-page hg-map">
     <header className="hg-topline"><span>TREASURE OF CODE <b> / THE HUNT</b></span><button className="hg-button hg-secondary" onClick={onExit}>Exit quest ↗</button></header>
-    <section className="hm-heading hg-reveal"><div><p className="hg-eyebrow">YOUR PATH THROUGH THE UNKNOWN</p><h1 tabIndex={-1}>The haunted <em>trail.</em></h1><p>Follow the road. Decode each checkpoint. Reach the treasure vault.</p></div><div className="hm-progress"><span>{solvedCount} <small>/ {total} solved</small></span><progress value={progress} max="100" aria-label="Quest completion"/><span className="hm-progress-label">{Math.round(progress)}% OF THE TRAIL COMPLETE</span></div></section>
+    <section className="hm-heading hg-reveal"><div><p className="hg-eyebrow">THE GRAVEYARD OF UNFINISHED CODE</p><h1 tabIndex={-1}>The haunted <em>trail.</em></h1><p>Follow the road. Decode each checkpoint. Reach the treasure vault.</p></div><div className="hm-progress"><span>{solvedCount} <small>/ {total} solved</small></span><progress value={progress} max="100" aria-label="Quest completion"/><span className="hm-progress-label">{Math.round(progress)}% OF THE TRAIL COMPLETE</span></div></section>
     <div className="hm-map-toolbar"><span>{active ? `NEXT / ${active.title || `Riddle ${activeRiddle}`}` : total ? "ALL CHECKPOINTS CLEARED" : "WAITING FOR CHALLENGES"}</span><div className="hg-legend"><span>● Current</span><span>✓ Solved</span><span>○ Locked</span></div></div>
     {total === 0 ? <div className="hg-empty">No challenges are available for this quest yet.</div> : <div className="hm-world hg-reveal" style={{ "--map-height": `${desktop.height}px`, "--mobile-height": `${mobile.height}px` }} aria-label="Quest route from the entrance gate to the treasure vault">
       <div className="hm-terrain" aria-hidden="true"/>
       <Road layout={desktop} solvedCount={solvedCount} activeRiddle={activeRiddle} total={total}/><Road layout={mobile} mobile solvedCount={solvedCount} activeRiddle={activeRiddle} total={total}/>
-      <div className="hm-landmark hm-gate" style={placement(desktop.start,mobile.start)}><img src="/halloween/moonlit-shrine.png" alt=""/><span>THE ENTRANCE GATE</span><small>Your journey begins</small></div>
+      <div className="hm-landmark hm-gate" style={placement(desktop.start,mobile.start)}><img src="/halloween/cursed-graveyard.svg" alt=""/><span>THE ENTRANCE GATE</span><small>Your journey begins</small></div>
       <ol className="hm-stops">
         {questions.map((question,index) => {
           const num = index + 1;
@@ -61,13 +62,13 @@ export default function MapScreen({ solvedCount = 0, activeRiddle, onNodeClick, 
           return <li key={question.id || num} className={`hm-stop ${status}`} style={placement(desktop.stops[index],mobile.stops[index])}>
             <button disabled={!solved && !current} onClick={() => solved ? onNodeClick(num,true) : onNodeClick(num)} aria-current={current ? "step" : undefined} aria-label={`Checkpoint ${num}: ${question.title || `Riddle ${num}`}. ${solved ? "Solved. Review clue" : current ? "Unlocked. Open challenge" : "Locked"}`}>
               {current && <span className="hm-you">YOU ARE HERE</span>}
-              <span className="hm-node"><span>{solved ? "✓" : String(num).padStart(2,"0")}</span></span>
+              <span className="hm-node"><span>{solved ? "✓" : current ? <RuneIcon name="key" /> : <RuneIcon name="lock" />}</span></span>
               <span className="hm-stop-label"><span className="hm-stop-status">{solved ? `CHECKPOINT ${num} / SOLVED` : current ? `CHECKPOINT ${num} / UNLOCKED` : `CHECKPOINT ${num} / LOCKED`}</span><strong>{question.title || `Riddle ${num}`}</strong><span className="hm-stop-meta">{String(question.difficulty || "MEDIUM").toUpperCase()} <i>·</i> {players} player{players === 1 ? "" : "s"}</span><span className="hm-stop-action">{solved ? "Review clue ↗" : current ? "Open challenge →" : `Solve checkpoint ${num-1} first`}</span></span>
             </button>
           </li>;
         })}
       </ol>
-      <div className={`hm-landmark hm-vault ${solvedCount >= total ? "unlocked" : ""}`} style={placement(desktop.finish,mobile.finish)}><img src="/halloween/treasure-vault.png" alt=""/><span>THE TREASURE VAULT</span><small>{solvedCount >= total ? "The treasure is yours" : "Complete the trail to unlock"}</small></div>
+      <div className={`hm-landmark hm-vault ${solvedCount >= total ? "unlocked" : ""}`} style={placement(desktop.finish,mobile.finish)}><img src="/halloween/treasure-vault.svg" alt=""/><span>THE TREASURE VAULT</span><small>{solvedCount >= total ? "The treasure is yours" : "Complete the trail to unlock"}</small></div>
       <div className="hm-map-note" aria-hidden="true">NIGHTFALL TERRITORY<br/><span>FOLLOW THE LANTERN ROAD</span></div>
     </div>}
     <footer className="hg-footer"><span>THE GATES OPEN TO THOSE WHO DECODE.</span><span>{solvedCount} of {total} checkpoints solved</span></footer>

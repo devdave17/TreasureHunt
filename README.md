@@ -1,5 +1,11 @@
 # React + Vite
 
+## Halloween frontend
+
+The player and admin interfaces use the CEREBRO Halloween theme. See [plan.md](plan.md) for the completed redesign roadmap and [implementation notes](docs/HALLOWEEN_REDESIGN.md) for effects controls, artwork, and verification details.
+
+With `npm run dev` running, `/scripts/halloween-preview.html` provides isolated sample-data previews of every player screen and the admin sections. The preview blocks backend calls and mutations and is not included in the production build.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

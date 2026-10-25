@@ -22,7 +22,7 @@
 .hg-timer strong { color:#ffd4a5; font:500 17px/1.3 Consolas,monospace; letter-spacing:1px; overflow-wrap:anywhere; }
 .hg-timer.warning { background:#2a2413; }.hg-timer.warning strong {color:#ffda7b;}
 .hg-timer.urgent, .hg-timer.expired { background:#311820; border-color:#dd6d6d; }.hg-timer.urgent strong, .hg-timer.expired strong {color:#ffabab;}
-.hg-map-hero { position:relative; isolation:isolate; display:flex; justify-content:space-between; align-items:center; gap:30px; min-height:360px; padding:45px; margin:30px 0 40px; border:1px solid #eee0d324; border-radius:7px; overflow:hidden; background:linear-gradient(90deg,#090c14e8 3%,#090c1450 65%,#090c1450),url('/halloween/moonlit-shrine.png') 65% 48%/cover; }
+.hg-map-hero { position:relative; isolation:isolate; display:flex; justify-content:space-between; align-items:center; gap:30px; min-height:360px; padding:45px; margin:30px 0 40px; border:1px solid #eee0d324; border-radius:7px; overflow:hidden; background:linear-gradient(90deg,#090c14e8 3%,#090c1450 65%,#090c1450),url('/halloween/cursed-graveyard.svg') 65% 48%/cover; }
 .hg-map-copy > p:last-child { color:#bdb7c3; font-size:13px; line-height:1.8; margin-top:23px; }
 .hg-progress-panel { width:200px; flex-shrink:0; padding:25px; background:#0b0f1be0; border:1px solid #f6c39c3a; border-radius:5px; backdrop-filter:blur(10px); }
 .hg-progress-panel strong { display:block; font:48px/1.3 Georgia,serif; color:#ffb480; }.hg-progress-panel small { font-size:22px; color:#a5a0ad; }

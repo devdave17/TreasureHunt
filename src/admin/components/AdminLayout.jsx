@@ -47,7 +47,9 @@ function AdminLayout({ authToken, role, onLogout }) {
         role={resolvedRole}
       />
       <main className="admin-main">
+        <header className="admin-command-header"><div><span className="admin-eyebrow">TREASURE OF CODE / {safeActiveTab.toUpperCase()}</span><p>{({ dashboard: "Keep watch over the hunt.", users: "The souls behind the code.", quests: "Prepare the next descent.", questions: "Craft the clues. Guard the answers.", rankings: "Where the legends are recorded.", stats: "Read the signs in the numbers." })[safeActiveTab]}</p></div><span className="admin-role-chip">{resolvedRole === "invigilator" ? "Invigilator" : "Administrator"}</span></header>
         {renderContent()}
+        <footer className="admin-page-footer">CEREBRO × Coding Club, IIIT Vadodara <span>THE CONTROL ROOM</span></footer>
       </main>
     </div>
   )

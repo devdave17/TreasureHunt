@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
-import Stars from "./components/Stars";
+import HorrorAtmosphere from "./components/HorrorAtmosphere";
+import HauntDialog from "./components/HauntDialog";
 import LandingScreen from "./components/LandingScreen";
 import StartScreen from "./components/StartScreen";
 import QuestScreen from "./components/QuestScreen";
@@ -1140,7 +1141,7 @@ const App = () => {
 
   return (
     <>
-      <Stars />
+      <HorrorAtmosphere screen={currentScreen} />
 
       <section
         className={`screen ${currentScreen === "screen-landing" ? "active" : ""}`}
@@ -1179,6 +1180,7 @@ const App = () => {
           onProfileModalShown={() => setShouldShowProfileModal(false)}
           questLockNotice={questLockNotice}
           onCloseQuestLockNotice={() => setQuestLockNotice(null)}
+          isActive={currentScreen === "screen-quest"}
         />
       </section>
 
@@ -1236,7 +1238,7 @@ const App = () => {
       </section>
 
       {showBlockedPopup && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="blocked-popup-title">
+        <HauntDialog className="horror-game-dialog" labelId="blocked-popup-title" onClose={() => setShowBlockedPopup(false)}>
           <div className="profile-modal exit-confirm-modal anim-reveal">
             <div className="exit-confirm-heading" id="blocked-popup-title">Blocked by Invigilator</div>
             <p className="exit-confirm-message">
@@ -1248,11 +1250,11 @@ const App = () => {
               </button>
             </div>
           </div>
-        </div>
+        </HauntDialog>
       )}
 
       {showReplayWarning && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="replay-warning-title">
+        <HauntDialog className="horror-game-dialog" labelId="replay-warning-title" onClose={handleCancelReplayWarning}>
           <div className="profile-modal exit-confirm-modal anim-reveal">
             <div className="exit-confirm-heading" id="replay-warning-title">Warning: Quest Already Played</div>
             <p className="exit-confirm-message">
@@ -1269,11 +1271,11 @@ const App = () => {
               </button>
             </div>
           </div>
-        </div>
+        </HauntDialog>
       )}
 
       {showExitConfirm && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="exit-confirm-title">
+        <HauntDialog className="horror-game-dialog" labelId="exit-confirm-title" onClose={handleCancelExitQuest}>
           <div className="profile-modal exit-confirm-modal anim-reveal">
             <div className="exit-confirm-heading" id="exit-confirm-title">Are You Sure to Exit?</div>
             <p className="exit-confirm-message">
@@ -1289,7 +1291,7 @@ const App = () => {
               </button>
             </div>
           </div>
-        </div>
+        </HauntDialog>
       )}
 
     </>

@@ -1,8 +1,11 @@
+import OfficialLogo from './OfficialLogo';
 import { useState, useEffect, useRef } from "react";
 import { formatCountdownLabel, formatDateTimeLabel, getQuestStartAtMs, getQuestDurationMinutes } from "../utils/questTiming.js";
 import "./QuestScreen.css";
+import { HauntedScene } from "./HorrorAtmosphere";
+import { RuneIcon } from "./HauntSymbols";
 
-const questArt = ["/halloween/moonlit-shrine.png", "/halloween/haunted-archive.png", "/halloween/treasure-vault.png"];
+const questArt = ["/halloween/haunted-mansion.svg", "/halloween/cursed-graveyard.svg", "/halloween/treasure-vault.svg"];
 
 function getSchedule(quest, now) {
   const startAtMs = quest.startAtMs || quest.startAt ? getQuestStartAtMs(quest) : null;
@@ -80,7 +83,8 @@ export default function QuestScreen({
   return (
     <div className="haunt-lobby">
       <header className="haunt-lobby-header">
-        <span className="haunt-lobby-wordmark">Treasure <em>of</em> Code</span>
+        <span className="haunt-lobby-wordmark"><OfficialLogo /> Treasure <em>of</em> Code</span>
+        {selectedQuestId && <a className="haunt-lobby-ranking-shortcut" aria-label="Selected quest leaderboard" title="Selected quest leaderboard" href={`/ranking/${encodeURIComponent(selectedQuestId)}`} target="_blank" rel="noopener noreferrer"><RuneIcon name="treasure"/><span>Hall of the Haunted<small>Selected quest leaderboard ↗</small></span></a>}
         <div className="haunt-lobby-account" ref={profileRef}>
           <button ref={profileButtonRef} type="button" className="haunt-lobby-profile-button" aria-label="Player profile" aria-expanded={showProfile} aria-controls="lobby-player-profile" onClick={() => showProfile ? closeProfile() : setProfileOpen(true)}><span className="haunt-lobby-avatar">{userInitial}</span><span className="haunt-lobby-profile-name">{name}</span><span aria-hidden="true">⌄</span></button>
           {showProfile && <div className="haunt-lobby-profile" id="lobby-player-profile"><p className="haunt-lobby-kicker">YOUR HUNTER PROFILE</p><strong>{name}</strong><p>{userDetails?.email || "—"}</p><span>Registered participant</span></div>}
@@ -90,9 +94,9 @@ export default function QuestScreen({
 
       <main className="haunt-lobby-main">
         <section className="haunt-lobby-banner" aria-labelledby="quest-lobby-title">
-          <img src="/halloween/moonlit-shrine.png" alt="" width="1672" height="941" />
-          <div className="haunt-lobby-banner-copy"><p className="haunt-lobby-kicker">WELCOME BACK, {name}</p><h1 id="quest-lobby-title" tabIndex={-1}>Choose your<br /><span>next adventure.</span></h1><p>Beyond every gate, a new mystery.<br />Choose a quest. Follow the clues. Claim the treasure.</p></div>
-          <div className="haunt-lobby-banner-note"><span>THE QUEST LOBBY</span><p>Your next chapter starts here.</p></div>
+          <HauntedScene />
+          <div className="haunt-lobby-banner-copy"><p className="haunt-lobby-kicker">WELCOME BACK, BRAVE SOUL · {name}</p><h1 id="quest-lobby-title" tabIndex={-1}>Enter if<br /><span>you dare.</span></h1><p>Choose a quest. Follow the clues. Claim the treasure...<br />before the clock claims you.</p></div>
+          <div className="haunt-lobby-banner-note"><span>THE QUEST LOBBY</span><p>The shadows have been expecting you.</p><code>&gt; summoning your next quest..._</code></div>
         </section>
 
         <section className="haunt-lobby-quests" aria-labelledby="available-quests-title">
@@ -104,16 +108,16 @@ export default function QuestScreen({
               const schedule = getSchedule(quest, now);
               const statusLabel = { live: "Live now", upcoming: "Opens soon", ended: "Ended", available: "Available" }[schedule.state];
               const showSchedule = schedule.state === "upcoming" || schedule.state === "ended";
-              return <article key={quest.id} className={`haunt-quest-card${selected ? " is-selected" : ""}`} style={{ "--quest-delay": `${Math.min(index, 5) * 80 + 180}ms` }} aria-labelledby={`quest-title-${quest.id}`}>
-                <div className="haunt-quest-art"><img src={questArt[index % questArt.length]} alt="" loading="lazy" width="1672" height="941" /><span className={`haunt-quest-status status-${schedule.state}`}><i aria-hidden="true" />{statusLabel}</span><span className="haunt-quest-number">QUEST {String(index + 1).padStart(2, "0")}</span>{selected && <span className="haunt-quest-selected">✓ Selected</span>}</div>
-                <div className="haunt-quest-body"><p className="haunt-quest-code">{quest.code || "TREASURE QUEST"}</p><h3 id={`quest-title-${quest.id}`}>{quest.name}</h3><p className="haunt-quest-description">{quest.description || "Follow the clues, unlock every checkpoint, and find the treasure waiting at the end."}</p><dl className="haunt-quest-meta"><div><dt>Duration</dt><dd>{schedule.duration.toLocaleString()} min</dd></div><div><dt>{schedule.state === "upcoming" ? "Opens in" : "Format"}</dt><dd>{schedule.state === "upcoming" ? formatCountdownLabel(Math.max(0, (schedule.startAtMs - now) / 1000)) : "Coding hunt"}</dd></div></dl><div className="haunt-quest-actions"><button type="button" className="haunt-lobby-secondary" aria-pressed={selected} disabled={isLaunching} onClick={() => onQuestChange?.(quest.id)} aria-label={`${selected ? "Selected" : "Select"} ${quest.name}`}>{selected ? "Selected" : "Select"}</button><button type="button" className={`haunt-lobby-primary${showSchedule ? " schedule-action" : ""}`} disabled={isLaunching} onClick={() => showSchedule ? setScheduleNotice({ questName: quest.name, ...schedule }) : onOpenQuest?.(quest.id)} aria-label={`${showSchedule ? "View schedule for" : "Start"} ${quest.name}`}>{isLaunching && selected ? "Starting…" : showSchedule ? "View schedule" : "Start quest"}<span aria-hidden="true">{showSchedule ? "↗" : "→"}</span></button></div><a className="haunt-quest-ranking" href={`/ranking/${encodeURIComponent(quest.id)}`} target="_blank" rel="noopener noreferrer">View leaderboard <span aria-hidden="true">↗</span></a></div>
+              return <article key={quest.id} data-state={schedule.state} className={`haunt-quest-card${selected ? " is-selected" : ""}`} style={{ "--quest-delay": `${Math.min(index, 5) * 80 + 180}ms` }} aria-labelledby={`quest-title-${quest.id}`}>
+                <div className="haunt-quest-art"><img src={questArt[index % questArt.length]} alt="" loading="lazy" width="1672" height="941" /><span className={`haunt-quest-status status-${schedule.state}`}><i aria-hidden="true" />{statusLabel}</span><span className="haunt-quest-number"><RuneIcon name={schedule.state === "ended" ? "skull" : "flag"} /> QUEST {String(index + 1).padStart(2, "0")}</span>{selected && <span className="haunt-quest-selected">✦ Chosen</span>}</div>
+                <div className="haunt-quest-body"><p className="haunt-quest-code">{quest.code || "TREASURE QUEST"}</p><h3 id={`quest-title-${quest.id}`}>{quest.name}</h3><p className="haunt-quest-description">{quest.description || "Follow the clues, unlock every checkpoint, and find the treasure waiting at the end."}</p><dl className="haunt-quest-meta"><div><dt>Time in the crypt</dt><dd>{schedule.duration.toLocaleString()} min</dd></div><div><dt>{schedule.state === "upcoming" ? "Opens in" : "Format"}</dt><dd>{schedule.state === "upcoming" ? formatCountdownLabel(Math.max(0, (schedule.startAtMs - now) / 1000)) : "Coding hunt"}</dd></div></dl><div className="haunt-quest-actions"><button type="button" className="haunt-lobby-secondary" aria-pressed={selected} disabled={isLaunching} onClick={() => onQuestChange?.(quest.id)} aria-label={`${selected ? "Selected" : "Select"} ${quest.name}`}>{selected ? "Selected" : "Select"}</button><button type="button" className={`haunt-lobby-primary${showSchedule ? " schedule-action" : ""}`} disabled={isLaunching} onClick={() => showSchedule ? setScheduleNotice({ questName: quest.name, ...schedule }) : onOpenQuest?.(quest.id)} aria-label={`${showSchedule ? "View schedule for" : "Start"} ${quest.name}`}>{isLaunching && selected ? "Starting…" : showSchedule ? "View schedule" : "Start quest"}<span aria-hidden="true">{showSchedule ? "↗" : "→"}</span></button></div><a className="haunt-quest-ranking" href={`/ranking/${encodeURIComponent(quest.id)}`} target="_blank" rel="noopener noreferrer">Hall of the Haunted · Leaderboard <span aria-hidden="true">↗</span></a></div>
               </article>;
             })}</div>
           )}
         </section>
         <div className="haunt-lobby-tip"><span aria-hidden="true">✦</span><p><strong>A clue before you begin.</strong> Each correct output unlocks the next stage. Keep an eye on the clock once your quest starts.</p></div>
       </main>
-      <footer className="haunt-lobby-footer"><span>CELEBRO</span><span>CRACK THE CLUES. SOLVE THE CODE.</span><span>CODING CLUB, IIIT VADODARA</span></footer>
+      <footer className="haunt-lobby-footer"><span>CEREBRO</span><span>CRACK THE CLUES. SOLVE THE CODE.</span><span>CODING CLUB, IIIT VADODARA</span></footer>
       {notice && <ScheduleDialog notice={notice} now={now} onClose={closeNotice} />}
     </div>
   );

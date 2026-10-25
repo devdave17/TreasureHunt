@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none">
+<defs>
+ <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#100a20"/><stop offset=".65" stop-color="#392044"/><stop offset="1" stop-color="#160d20"/></linearGradient>
+ <radialGradient id="halo"><stop stop-color="#f5b471" stop-opacity=".26"/><stop offset="1" stop-color="#c97d8c" stop-opacity="0"/></radialGradient>
+ <radialGradient id="moon"><stop stop-color="#ffedbd"/><stop offset=".8" stop-color="#e8bb85"/><stop offset="1" stop-color="#cd986c"/></radialGradient>
+ <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#261b33"/><stop offset="1" stop-color="#0c0913"/></linearGradient>
+ <linearGradient id="path" x2="0" y2="1"><stop stop-color="#d37b35" stop-opacity=".4"/><stop offset="1" stop-color="#402333" stop-opacity="0"/></linearGradient>
+ <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#ffcc6e"/><stop offset="1" stop-color="#d85c23"/></linearGradient>
+ <g id="window"><path d="M0 32V10Q10-10 20 10v22Z" fill="url(#glass)"/><path d="M10 0v32M0 17h20" stroke="#1a1026" stroke-width="4"/><path d="M-4 35h28" stroke="#77505e" stroke-width="3"/></g>
+ <g id="bat"><path d="M0 5Q-16-12-26-8l7 13 7-2 4 9 8-3 8 3 4-9 7 2 7-13Q16-12 0 5" fill="#100c1b"/></g>
+ <g id="stone"><path d="M-19 40V0q19-30 38 0v40Z" fill="#302438" stroke="#513747" stroke-width="2"/><path d="M-7 5H7M0-2v17" stroke="#73515f" stroke-width="3"/></g>
+ <g id="pumpkin"><path d="M0-19q-3-11 5-15" stroke="#727e44" stroke-width="5"/><ellipse rx="30" ry="25" fill="#c34c1b"/><ellipse rx="21" ry="25" fill="#f47a24"/><ellipse rx="11" ry="25" fill="#de5d1e"/><path d="m-17-5 10-5-2 11Zm34 0-10-5 2 11ZM-17 9l9 5 8-3 8 3 9-5-5 13H-12Z" fill="#ffdf7b"/></g>
+</defs>
+<path fill="url(#sky)" d="M0 0h1600v1000H0z"/>
+<circle cx="1130" cy="280" r="400" fill="url(#halo)"/><circle cx="1130" cy="280" r="156" fill="url(#moon)"/>
+<g fill="#c08d70" opacity=".2"><circle cx="1060" cy="235" r="28"/><circle cx="1175" cy="320" r="36"/><circle cx="1194" cy="203" r="16"/><circle cx="1085" cy="350" r="14"/></g>
+<g fill="#edd4bc" opacity=".65"><circle cx="700" cy="110" r="1.5"/><circle cx="820" cy="210" r="2"/><circle cx="1320" cy="94" r="1.5"/><circle cx="1500" cy="250" r="2"/><circle cx="935" cy="60" r="2"/><circle cx="1450" cy="420" r="1.5"/><circle cx="585" cy="230" r="1"/></g>
+<path d="M400 620q160-140 300-40 160-140 320-10 160-100 300-30 100-60 280 20v440H400Z" fill="#20172d"/>
+<path d="M510 730q110-70 190-20 270-130 500-35 170-50 400 40v285H510Z" fill="#100c19"/>
+<!-- Crooked mansion, with hand-drawn roofline and illuminated gothic windows. -->
+<g stroke="#5b384d" stroke-width="3">
+<path d="m805 734 10-220 48-55 39 55-5 220Zm379 0-10-220 48-70 52 70 15 220Z" fill="url(#wall)"/>
+<path d="m789 523 77-142 56 142-49-17Z" fill="#100c1a"/><path d="m1150 521 74-158 75 158-77-21Z" fill="#100c1a"/>
+<path d="M896 738V501l79-51h132l81 51v237Z" fill="url(#wall)"/>
+<path d="m880 510 112-139 42 46 57-46 112 139-103-20-63 6-69-6Z" fill="#120d1d"/>
+<path d="M1000 466V329l40-45 42 45v137Z" fill="url(#wall)"/><path d="m983 337 55-123 61 123-60-17Z" fill="#100c19"/>
+<path d="m1038 214 3-35m-16 10h27M866 382l-3-28m-11 10h22m351-2 3-28m-14 9h24" stroke="#875465"/>
+<path d="M930 737v-95h220v95Z" fill="#1b1223"/><path d="M930 641h220l-32-45H965Z" fill="#110c19"/>
+<path d="M1009 737v-64q30-42 60 0v64Z" fill="url(#glass)" stroke="#271529"/><path d="M1038 651v86" stroke="#603746"/>
+<path d="M946 643v94m185-94v94" stroke="#795063" stroke-width="7"/>
+<path d="M890 739h307l16 18H873Z" fill="#553046"/><path d="M873 759h340l16 16H855Z" fill="#3d2337"/>
+</g>
+<g><use href="#window" x="852" y="549"/><use href="#window" x="847" y="636"/><use href="#window" x="1215" y="547"/><use href="#window" x="1217" y="637"/><use href="#window" x="946" y="534"/><use href="#window" x="1005" y="534"/><use href="#window" x="1064" y="534"/><use href="#window" x="1123" y="534"/><use href="#window" x="1030" y="347"/></g>
+<path d="M1006 776q-200 50-85 224h426q-325-119-276-224" fill="url(#path)"/>
+<!-- Bare trees frame the scene without competing with foreground copy. -->
+<g stroke="#0b0912" stroke-linecap="round"><path d="m1450 850-27-255 21-155-33-163m21 299-91-91-34-117m109 177 81-74 38-124m-114 20-80-87-11-65m84 96 54-71 18-89m-51 220 57-48 35 2" stroke-width="23"/><path d="m1467 807-49-105m-82-233-53-23m211-57 59-22m-128-54-63-8" stroke-width="10"/><path d="m692 830 17-222-32-126 12-109m18 266-72-62-39-98m104 96 65-79 11-98m-95 82-42-54m120 94 47-12" stroke-width="17"/></g>
+<g stroke="#694250" stroke-width="3" fill="#1e1428"><path d="M739 740v90m24-97v92m24-101v96m492-96v92m24-85v91m24-85v93m24-89v94m-630-73 78-15m480 10 93 14"/><path d="m735 742 4-10 4 10m16-8 4-10 4 10m16-9 4-10 4 10m484-1 4-10 4 10m16-4 4-10 4 10m16-4 4-10 4 10"/></g>
+<use href="#stone" x="1355" y="801" transform="rotate(9 1355 801)"/><use href="#stone" x="690" y="785" transform="rotate(-12 690 785)"/><use href="#stone" x="1480" y="870"/>
+<use href="#pumpkin" x="809" y="810"/><use href="#pumpkin" x="1260" y="826" transform="rotate(9 1260 826) scale(1)"/>
+<g><use href="#bat" x="1300" y="235" transform="rotate(-15 1300 235)"/><use href="#bat" x="990" y="160" transform="rotate(12 990 160) scale(.7)"/><use href="#bat" x="1360" y="335"/></g>
+<path d="M0 900q300-80 600 0 260-60 500 10 270-45 500-10v100H0Z" fill="#0b0612"/>
+<g fill="#936a9f" opacity=".13"><ellipse cx="1050" cy="840" rx="430" ry="17"/><ellipse cx="1280" cy="912" rx="400" ry="22"/></g>
+</svg>

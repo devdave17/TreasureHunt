@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { gameApi } from "../services/gameApi";
 import HauntDialog from "./HauntDialog";
+import HorrorAtmosphere from "./HorrorAtmosphere";
+import { RuneIcon } from "./HauntSymbols";
 import "./RankingScreen.css";
 import "./HauntMotion.css";
 
@@ -124,7 +126,7 @@ function RankingScreen({ questId, onBack }) {
 
   const backToHunt = async (event) => {
     const page = event.currentTarget.closest("#screen-ranking");
-    if (!page?.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!page?.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.effects === "off") {
       onBack();
       return;
     }
@@ -136,10 +138,10 @@ function RankingScreen({ questId, onBack }) {
 
   return (
     <section className="screen ranking-screen active" id="screen-ranking">
-      <div className="ranking-shell">
-        <header className="ranking-page-header"><span>TREASURE OF CODE <b> / THE HONOR ROLL</b></span><button className="ranking-back btn-secondary" type="button" onClick={backToHunt}>← Back to the hunt</button></header>
+      <HorrorAtmosphere screen="screen-ranking" /><div className="ranking-shell">
+        <header className="ranking-page-header"><span>TREASURE OF CODE <b> / HALL OF THE HAUNTED</b></span><button className="ranking-back btn-secondary" type="button" onClick={backToHunt}>← Back to the hunt</button></header>
         <div className="ranking-hero">
-          <div className="ranking-kicker">LEGENDS OF THE HUNT / PUBLIC LEADERBOARD</div>
+          <div className="ranking-kicker">HALL OF THE HAUNTED / PUBLIC LEADERBOARD</div>
           <h1 className="ranking-title" tabIndex={-1}>{quest?.name || "Quest Ranking"}</h1>
           <p className="ranking-subtitle">
             {quest?.description || "Quest-wide results are shown here for direct sharing."}
@@ -157,10 +159,10 @@ function RankingScreen({ questId, onBack }) {
         </div>
 
         <div className="ranking-body">
-          <div className="ranking-toolbar"><h2>The code hunters</h2><span>Updates every 10 seconds · Select a player for details</span></div>
+          <div className="ranking-toolbar"><h2><RuneIcon name="treasure" /> The surviving legends</h2><span>Updates every 10 seconds · Select a player for details</span></div>
 
           {loading ? (
-            <div className="ranking-state" role="status">Opening the honor roll…</div>
+            <div className="ranking-state" role="status">Summoning the leaderboard…</div>
           ) : error ? (
             <div className="ranking-state ranking-state-error" role="alert">{error} Retrying shortly.</div>
           ) : rankingRows.length === 0 ? (
@@ -225,6 +227,7 @@ function RankingScreen({ questId, onBack }) {
           )}
         </div>
 
+        <footer className="hg-footer ranking-footer"><span>THEIR NAMES ECHO THROUGH THE HALLS.</span><span>CEREBRO × CODING CLUB, IIIT VADODARA</span></footer>
         {selectedParticipant && (
           <HauntDialog className="ranking-dialog" labelId="ranking-detail-title" onClose={() => setSelectedParticipant(null)}>
             <div className="ranking-modal" onClick={(event) => event.stopPropagation()}>

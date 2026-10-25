@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Treasure of Code — 6th April 2026</title>
+<title>Treasure of Code — 31st October 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Share+Tech+Mono&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
   :root {
@@ -650,58 +650,34 @@
     .node-circle { width: 50px; height: 50px; font-size: 1.2rem; }
   }
 </style>
+  <link rel="stylesheet" href="/halloween/legacy.css">
 </head>
-<body>
+<body class="horror-legacy">
 
 <!-- Stars BG -->
 <div class="stars" id="stars"></div>
 
 <!-- ══════════ SCREEN 1: LANDING ══════════ -->
 <section class="screen active" id="screen-landing">
-  <div class="landing-badge">⚡ CELEBRO presents</div>
+  <div class="landing-badge">⚡ CEREBRO presents</div>
   <div class="landing-chest">🏴‍☠️</div>
   <h1 class="landing-title">Treasure<br>of Code</h1>
-  <div class="landing-sub">6th April 2026 &nbsp;·&nbsp; CBT Format &nbsp;·&nbsp; Open to all</div>
+  <p class="legacy-conducted">Conducted By COUT&lt;&lt;MASTERS;</p>
+  <div class="landing-sub">31st October 2026 &nbsp;·&nbsp; Open to all</div>
   <p class="landing-desc">
     A coding treasure hunt where every correct output becomes your next key. 
     Solve puzzles, unlock riddles, and race to claim the ultimate prize.
   </p>
 
-  <div class="rules-grid">
-    <div class="rule-card" style="--delay:.7s">
-      <div class="rule-icon">🗝️</div>
-      <div>
-        <div class="rule-title">Enter the Key</div>
-        <div class="rule-text">Use the output of each solved problem as the key to unlock the next riddle.</div>
-      </div>
-    </div>
-    <div class="rule-card" style="--delay:.8s">
-      <div class="rule-icon">🗺️</div>
-      <div>
-        <div class="rule-title">Follow the Map</div>
-        <div class="rule-text">5 stages on the treasure map — Easy → Medium → Hard. Each node unlocks a new puzzle.</div>
-      </div>
-    </div>
-    <div class="rule-card" style="--delay:.9s">
-      <div class="rule-icon">⚖️</div>
-      <div>
-        <div class="rule-title">ICPC Rules</div>
-        <div class="rule-text">Ranked by riddles solved. Ties broken by time and test cases passed.</div>
-      </div>
-    </div>
-    <div class="rule-card" style="--delay:1s">
-      <div class="rule-icon">🏆</div>
-      <div>
-        <div class="rule-title">Win the Hunt</div>
-        <div class="rule-text">Solve all 5 challenges before time runs out to claim the treasure!</div>
-      </div>
-    </div>
-  </div>
+  <h2 id="legacy-how-to-play">How to Play</h2>
+  <p class="legacy-loop">Input Key → Write Code → Execute → Submit Output → Unlock Next Question → Repeat</p>
+  <div class="rules-grid"><div class="rule-card"><div class="rule-icon">01</div><div><div class="rule-title">Enter the game</div><div class="rule-text">Log in to your account and enter Treasure of Code.</div></div></div><div class="rule-card"><div class="rule-icon">02</div><div><div class="rule-title">Get your input key</div><div class="rule-text">Use the supplied input key as instructed in the question.</div></div></div><div class="rule-card"><div class="rule-icon">03</div><div><div class="rule-title">Write and run your code</div><div class="rule-text">Write your solution in your own coding environment. Use the input key, execute your program, and obtain its output.</div></div></div><div class="rule-card"><div class="rule-icon">04</div><div><div class="rule-title">Submit the output</div><div class="rule-text">Check and enter your program output in the website’s designated submission field.</div></div></div><div class="rule-card"><div class="rule-icon">05</div><div><div class="rule-title">Unlock the next question</div><div class="rule-text">Only a correct, validated output unlocks the next question. If incorrect, review your code and retry according to event rules.</div></div></div><div class="rule-card"><div class="rule-icon">06</div><div><div class="rule-title">Repeat until the end</div><div class="rule-text">Use the input key for each applicable challenge. Solve, run, and submit the correct output. Repeat through the final question.</div></div></div><div class="rule-card"><div class="rule-icon">07</div><div><div class="rule-title">Reach the treasure</div><div class="rule-text">Complete the challenges, track your progress on the leaderboard, and compete for the treasure.</div></div></div></div>
+  <p class="legacy-reminder">Follow the question’s input-key instructions, run code in your own environment, and submit its output. Repeat until every challenge is complete. Follow the official event rules.</p>
 
   <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center">
     <button class="btn-primary" onclick="goToStart()">⚔️ &nbsp; Begin Quest</button>
   </div>
-  <div class="landing-footer">CELEBRO &nbsp;|&nbsp; Coding Club, IIIT Vadodara</div>
+  <div class="landing-footer">CEREBRO &nbsp;|&nbsp; Coding Club, IIIT Vadodara</div>
 </section>
 
 <!-- ══════════ SCREEN 2: INITIAL KEY INPUT ══════════ -->
@@ -863,7 +839,7 @@
     <button class="btn-primary" onclick="resetGame()">🔄 &nbsp;Play Again</button>
   </div>
   <div style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--text-dim);letter-spacing:.1em">
-    CELEBRO &nbsp;·&nbsp; Coding Club, IIIT Vadodara &nbsp;·&nbsp; 6th April 2026
+    CEREBRO &nbsp;·&nbsp; Coding Club, IIIT Vadodara &nbsp;·&nbsp; 31st October 2026
   </div>
 </section>
 

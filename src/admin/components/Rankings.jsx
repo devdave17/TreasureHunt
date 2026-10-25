@@ -1,3 +1,4 @@
+import HauntDialog from "../../components/HauntDialog"
 import { useEffect, useMemo, useState } from "react"
 import PropTypes from "prop-types"
 import { api } from "../api.js"
@@ -263,7 +264,7 @@ function Rankings({ authToken }) {
                     className="ranking-row"
                   >
                     <td>#{row.rank}</td>
-                    <td>{row.name || "Unknown player"}</td>
+                    <td><button type="button" className="admin-player-link" aria-label={`Open details for ${row.name || "Unknown player"}`} onClick={(event) => { event.stopPropagation(); setSelectedParticipant(row); }}>{row.name || "Unknown player"}</button></td>
                     <td>{row.email || "-"}</td>
                     <td className="score-cell">{Number(row.totalScore) || 0}</td>
                     <td className="score-cell">{Number(row.mapScore) || 0}</td>
@@ -284,10 +285,10 @@ function Rankings({ authToken }) {
       </section>
 
       {selectedParticipant && (
-        <div className="ranking-modal-backdrop" onClick={() => setSelectedParticipant(null)}>
+        <HauntDialog className="admin-ranking-dialog" labelId="admin-ranking-detail-title" onClose={() => setSelectedParticipant(null)}>
           <div className="ranking-modal" onClick={(event) => event.stopPropagation()}>
             <div className="ranking-modal-header">
-              <h3>Participant Details</h3>
+              <h3 id="admin-ranking-detail-title">Participant Details</h3>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -375,7 +376,7 @@ function Rankings({ authToken }) {
               )}
             </div>
           </div>
-        </div>
+        </HauntDialog>
       )}
     </div>
   )

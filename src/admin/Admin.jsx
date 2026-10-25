@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react"
 import "./admin.css"
+import "./admin-horror.css"
+import { HauntedScene } from "../components/HorrorAtmosphere"
+import OfficialLogo from "../components/OfficialLogo"
 import AdminLayout from "./components/AdminLayout"
 import { api } from "./api"
 
@@ -65,19 +68,21 @@ function Admin() {
 
   if (!authToken) {
     return (
-      <main className="admin-page">
+      <main className="admin-page admin-login-page">
+        <aside className="admin-login-story" aria-label="Treasure of Code administration"><HauntedScene /><div className="admin-login-brand"><OfficialLogo /><span>CEREBRO / TREASURE OF CODE</span></div><div className="admin-login-story-copy"><p>BEHIND THE HAUNTED GATES</p><h1>Every haunt<br />needs a <em>keeper.</em></h1><span>The control room for Treasure of Code.<br />Coding Club, IIIT Vadodara.</span></div></aside>
         <section className="admin-shell login-shell">
           <header className="admin-header">
             <div>
-              <h1>Treasure Hunt Admin Login</h1>
-              <p>Enter admin credentials to continue.</p>
+              <p className="admin-eyebrow">AUTHORIZED KEEPERS ONLY</p>
+              <h2>Admin login<span>.</span></h2>
+              <p>Enter your credentials to manage the hunt.</p>
             </div>
           </header>
 
-          {error && <div className="state-box error">{error}</div>}
-          {successMessage && <div className="state-box success">{successMessage}</div>}
+          {error && <div className="state-box error" id="admin-login-error" role="alert">{error}</div>}
+          {successMessage && <div className="state-box success" role="status">{successMessage}</div>}
 
-          <form className="login-form" onSubmit={handleLogin}>
+          <form className="login-form" onSubmit={handleLogin} aria-busy={isLoggingIn}>
             <label className="field-label" htmlFor="admin-username">
               Username
             </label>
@@ -106,6 +111,8 @@ function Admin() {
               <button
                 className="btn btn-secondary toggle-btn"
                 type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
                 onClick={() => setShowPassword((prev) => !prev)}
               >
                 {showPassword ? "Hide" : "Show"}
@@ -113,9 +120,10 @@ function Admin() {
             </div>
 
             <button className="btn btn-primary login-btn" disabled={isLoggingIn} type="submit">
-              {isLoggingIn ? "Signing in..." : "Login"}
+              {isLoggingIn ? "Signing in..." : "Enter the control room →"}
             </button>
           </form>
+          <p className="admin-login-note">CEREBRO · CODING CLUB, IIIT VADODARA</p>
         </section>
       </main>
     )

@@ -1,4 +1,6 @@
 import PropTypes from "prop-types"
+import OfficialLogo from "../../components/OfficialLogo"
+import { RuneIcon } from "../../components/HauntSymbols"
 
 function Sidebar({ activeTab, onTabChange, onLogout, role }) {
   const tabs = role === "invigilator"
@@ -18,27 +20,31 @@ function Sidebar({ activeTab, onTabChange, onLogout, role }) {
   return (
     <aside className="admin-sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo">🏆</div>
-        <h1>Treasure Admin</h1>
+        <div className="sidebar-logo"><OfficialLogo /></div>
+        <div><span className="admin-eyebrow">CEREBRO</span><h1>The control room</h1></div>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" aria-label="Admin sections">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             className={`nav-item ${activeTab === tab.id ? "active" : ""}`}
             onClick={() => onTabChange(tab.id)}
             type="button"
+            aria-current={activeTab === tab.id ? "page" : undefined}
+            aria-label={tab.label}
+            title={tab.label}
           >
-            <span className="nav-icon">{tab.icon}</span>
+            <span className="nav-icon"><RuneIcon name={{ dashboard: "chart", users: "users", quests: "flag", questions: "code", rankings: "treasure", stats: "chart" }[tab.id]} /></span>
             <span className="nav-label">{tab.label}</span>
           </button>
         ))}
       </nav>
 
       <div className="sidebar-footer">
+        <p className="admin-staff-label">{role === "invigilator" ? "INVIGILATOR ACCESS" : "KEEPER ACCESS · ADMIN"}</p>
         <button className="btn btn-logout" onClick={onLogout} type="button">
-          🚪 Logout
+          <RuneIcon name="door" /> Log out
         </button>
       </div>
     </aside>

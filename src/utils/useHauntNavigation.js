@@ -39,7 +39,7 @@ export function useHauntNavigation(currentScreen, setCurrentScreen) {
       return;
     }
     const outgoing = document.getElementById(activeScreen);
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.effects === "off";
 
     const showDestination = () => {
       flushSync(() => { onEnter?.(); setCurrentScreen(nextScreen); });

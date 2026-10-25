@@ -1,5 +1,11 @@
 # Player Halloween artwork
 
+## Active artwork after the October 2026 redesign
+
+The active frontend now uses original, hand-authored vector scenes: `haunted-mansion.svg`, `cursed-graveyard.svg`, and `treasure-vault.svg`, plus the original pumpkin/code mark in `src/components/HauntSymbols.jsx`. These contain no external stock assets or copyrighted characters. The three SVG files total approximately 10.4 KB uncompressed. They are also used in the administrative login and standalone-page compatibility theme.
+
+The raster artwork and generation notes below are retained as legacy project assets. They no longer define the active player theme. See `docs/HALLOWEEN_REDESIGN.md` for the current design and effects controls.
+
 Asset: `moonlit-shrine.png`
 
 Created with the built-in image-generation tool. No external stock image was used. Reused across the player landing, login, lobby, and route pages. Admin assets are unchanged.

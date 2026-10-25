@@ -1,5 +1,8 @@
+import OfficialLogo from './OfficialLogo';
 import { useRef, useState } from "react";
 import "./StartScreen.css";
+import { HauntedScene } from "./HorrorAtmosphere";
+
 
 const StartScreen = ({ onSubmit, onBack, loginError = "", isLoggingIn = false }) => {
   const [instituteEmail, setInstituteEmail] = useState("");
@@ -41,25 +44,25 @@ const StartScreen = ({ onSubmit, onBack, loginError = "", isLoggingIn = false })
   return (
     <div className="haunt-auth">
       <header className="haunt-auth-header">
-        <span className="haunt-auth-wordmark">Treasure <em>of</em> Code</span>
+        <span className="haunt-auth-wordmark"><OfficialLogo /> Treasure <em>of</em> Code</span>
         <button type="button" className="haunt-auth-back" onClick={onBack} disabled={isLoggingIn}><span aria-hidden="true">←</span> Back to the hunt</button>
       </header>
 
       <main className="haunt-auth-layout">
         <aside className="haunt-auth-story" aria-label="Welcome to the hunt">
-          <img src="/halloween/moonlit-shrine.png" alt="" width="1672" height="941" />
-          <div className="haunt-auth-story-top"><span aria-hidden="true">✦</span> THE NEXT CHAPTER AWAITS</div>
+          <HauntedScene />
+          <div className="haunt-auth-story-top"><span aria-hidden="true">✦</span> THE HOUSE KNOWS YOU ARE HERE</div>
           <div className="haunt-auth-story-copy">
             <p className="haunt-auth-kicker">BEYOND THE MOONLIT GATES</p>
-            <h2>A curious mind.<br />A fearless spirit.<br /><span>Your hunt begins.</span></h2>
-            <p>The clues are waiting. Step inside and let your code light the way.</p>
+            <h2>The door creaks.<br />The shadows stir.<br /><span>Your hunt begins.</span></h2>
+            <p>Something is waiting on the other side. Let your code be the light.</p>
           </div>
           <span className="haunt-auth-scene-note">01 / ENTER THE UNKNOWN</span>
         </aside>
 
         <section className="haunt-auth-form-panel" aria-labelledby="player-login-title">
           <div className="haunt-auth-form-intro">
-            <p className="haunt-auth-kicker">YOUR KEY TO THE ADVENTURE</p>
+            <p className="haunt-auth-kicker">ENTER THE INNER CIRCLE</p>
             <h1 id="player-login-title" tabIndex={-1}>Player login<span>.</span></h1>
             <p>Welcome, code hunter. Sign in with your registered institute account to continue.</p>
           </div>
@@ -119,7 +122,7 @@ const StartScreen = ({ onSubmit, onBack, loginError = "", isLoggingIn = false })
           <div className="haunt-auth-help"><span aria-hidden="true">?</span><p>Having trouble signing in?<br /><strong>Contact your event coordinator for help.</strong></p></div>
         </section>
       </main>
-      <footer className="haunt-auth-footer"><span>CELEBRO</span><span>CRACK THE CLUES. SOLVE THE CODE.</span><span>CODING CLUB, IIIT VADODARA</span></footer>
+      <footer className="haunt-auth-footer"><span>CEREBRO</span><span>CRACK THE CLUES. SOLVE THE CODE.</span><span>CODING CLUB, IIIT VADODARA</span></footer>
     </div>
   );
 };
