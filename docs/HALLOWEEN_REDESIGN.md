@@ -29,6 +29,9 @@ The admin interface has a new illustrated login, control-room header/sidebar, re
 | `src/components/DreadEntity.jsx` | Original masked apparition used in the hero, guide, and reactions. |
 | `src/components/OfficialLogo.jsx` | Original logo assets with a readable fallback. |
 | `src/components/RiddleScreen.jsx` | Challenge layout, form labels, and submission feedback presentation. |
+| `src/utils/victoryAudio.js` | Prepares and resumes Web Audio during a valid answer-submit gesture, caches the decoded victory track, and provides stoppable/mutable playback after validation. |
+| `src/components/TreasureReveal.jsx` | Automatic successful-completion reward and victory audio, replay/mute, and audio cleanup. |
+| `src/components/TreasureReveal.css` / `TreasureRevealMotion.css` | Layered chest artwork, opening lid, rising treasure, gold rays, finite particles, and static motion-off fallback. |
 | `src/admin/admin-horror.css` | Administrative theme and mobile layout, imported after existing admin styles. |
 | `public/halloween/*.svg` | Original mansion, graveyard, and treasure-vault illustrations. The SVG source can be edited directly. |
 | `public/halloween/legacy.css` | Compatibility theme for the older standalone HTML pages. |
@@ -44,7 +47,7 @@ Intensity controls:
 - A substantial scroll on the landing page/lobby can trigger a peripheral encounter, with a 9-second cooldown. Scroll also drives restrained parallax and the guide’s active step. Scrolling remains native, without scroll hijacking.
 - Ambient scroll and keyboard surprises are limited to the landing page/lobby; click reactions cover player controls. A persistent effects layer survives player screen navigation. Inactive screens pause CSS animation. Hidden tabs stop effects, and effect listeners/animation-frame work are cleaned up when the active screen changes.
 - The treasure reveal is limited to actual completion presentation. Expired and disqualified outcomes do not show it.
-- Ambient audio was optional in the plan and is not part of this implementation. No sound plays automatically.
+- Ambient audio remains off. The requested victory track (`public/win_audio.mpeg`, 141,312 bytes, 4.416 seconds) starts once at 65% volume automatically when the active successful-results screen mounts, alongside the opening chest. No initial Open button is required. Replay restarts both; mute is independent of the motion preference. The reward does not affect the recorded result. The answer-submit gesture prepares a silent Web Audio context and decodes the track before asynchronous validation returns. Success then plays through that prepared context; preparation never emits music. The HTML audio element remains a fallback. Both playback paths stop on exit or tab hiding. Timeout and disqualification screens have no reward audio. Browser autoplay restrictions are respected: a fresh direct visit without prior interaction can block sound, in which case the scene still opens and a status explains that replay can start the music. Audio failure also leaves the reveal usable.
 
 Displayed countdowns and quest status continue to use `questTiming.js` and existing schedule data. The landing date is event copy only. Do not change backend schedules to adjust that label.
 
@@ -52,7 +55,7 @@ Displayed countdowns and quest status continue to use `questTiming.js` and exist
 
 Baseline and final `npm run build` and `npm run lint` pass. Build inputs, deployment configuration, dependencies, API services, backend routes/controllers/middleware, and database code have not changed.
 
-An isolated preview at `/scripts/halloween-preview.html` renders the real components with explicit sample data. It is available only through the development server, is not a configured production entry point, and blocks network calls and management mutations. No real contest attempt was started or submitted during verification.
+An isolated preview at `/scripts/halloween-preview.html` renders the real components with explicit sample data. It is available only through the development server, is not a configured production entry point, and blocks API calls and management mutations; the local victory-audio asset is explicitly permitted for playback testing. No real contest attempt was started or submitted during verification.
 
 Checked in the browser:
 
@@ -68,6 +71,10 @@ Checked in the browser:
 Core token contrast checks: body text/background 16.77:1; muted text/raised panel 8.30:1; primary button text/orange 6.91:1; purple text/raised panel 6.52:1; gold text/panel 10.57:1. These are checks of the defined solid colour pairs, not a claim of a complete accessibility audit.
 
 Verification limits: live authentication, actual contest answer validation/ranking updates, and admin create/update/delete operations were not exercised. Their service/controller code and existing action callbacks were preserved. The OS reduced-motion setting was not changed during testing; its CSS/media-query support was inspected, and the in-app motion-off path was exercised. Smooth animation is a design target, not a measured 60fps guarantee.
+
+## Treasure-opening reward verification
+
+The isolated `complete` fixture exercises the real reward component. Browser playback decoded the supplied MPEG track, advanced to its 4.416-second end, and stopped without looping. The `final-question` fixture accepts sample output `16` and completes after asynchronous validation. Its first submission automatically opens the chest and starts prepared Web Audio without pressing replay. Player preview selection now changes React state rather than reloading the document, preserving audio preparation; a fresh direct reload correctly showed the browser's autoplay-blocked fallback. Replay, mute/unmute, and exit cleanup were also checked. Timeout and blocked fixtures contain neither the reward nor an audio element. The scene was checked at 320, 390, 768, and 1440 pixels without viewport overflow. Effects off produces the finished open chest immediately; effects on animates the hinged lid and rising treasure. OS reduced motion uses the same static final-state rules. This is presentation-only verification using sample results, not a live contest submission.
 
 ## Preview locally
 
@@ -85,3 +92,7 @@ Use the sample-data toolbar to switch screens. In the question fixture, `16` dem
 ## Horror revision verification
 
 The subsequent revision restores the actual original logos, removes the guide card grid completely, changes the novel-like typography to a horror/condensed/sans-serif system, and rebuilds the question’s answer console. Browser checks cover 320, 390, 768, and 1440 pixels for landing, login, lobby, long question, and leaderboard layouts. No viewport overflow or clipped headings were found. Restored logo images report non-zero natural dimensions. Step 3 navigation correctly marks the coding act as current, and the mobile sticky navigation preserves the seven-step sequence. Empty/incorrect/pending/solved output states, decorative click reactions, motion-off behaviour, and navigation continuity were rechecked with isolated fixtures. Live contest submissions remain outside this verification.
+
+### First-play audio regression
+
+Use `/scripts/halloween-preview.html?screen=final-question`, enter `16`, and submit. This exercises the real submission gesture and automatic result reveal without backend calls. A direct cold load of `?screen=complete` cannot grant browser audio permission; it still displays the autoplay fallback when required. No browser restriction is bypassed.

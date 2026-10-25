@@ -1226,7 +1226,7 @@ const App = () => {
         <WinnerScreen
           onReset={resetGame}
           onExit={resetGame}
-          animation={true}
+          isActive={currentScreen === "screen-winner"}
           isTimeExpired={isTimeExpired}
           isBlockedByInvigilator={isBlockedByInvigilator}
           finalElapsedSeconds={finalElapsedSeconds}

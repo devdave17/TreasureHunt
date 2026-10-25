@@ -243,7 +243,7 @@ Use consistent forms, tables, badges, dialogs, and responsive navigation. Preser
 
 ## First implementation deliverable
 
-Completed scope: all eight implementation phases, the exact landing content corrections, the complete seven-step guide, content-first question page, all player screens, the full admin frontend, controlled surprises, original SVG artwork, compatibility styling, and an isolated design-preview tool. The latest instruction supersedes the earlier page-by-page approval checkpoints. Optional ambient audio remains outside the required implementation; no audio is played.
+Completed scope: all eight implementation phases, the exact landing content corrections, the complete seven-step guide, content-first question page, all player screens, the full admin frontend, controlled surprises, original SVG artwork, compatibility styling, and an isolated design-preview tool. The latest instruction supersedes the earlier page-by-page approval checkpoints. Optional ambient audio remains outside the required implementation. The subsequently requested victory soundtrack is implemented in the treasure reward below.
 
 
 ## Completion evidence
@@ -265,3 +265,14 @@ Completed scope: all eight implementation phases, the exact landing content corr
 - [x] Replace the How to Play cards/grid with the Seven Seals continuous scroll sequence, while retaining all seven required steps and reminders.
 - [x] Rebuild the answer page as a forensic clue/problem workspace and framed output console with a separate input-key tray. Preserve submission processing.
 - [x] Recheck original logo loading, 320/390/768/1440 layouts, scroll-step tracking, motion controls, answer states, build, and lint.
+
+## Treasure opening and supplied victory music — completed
+
+- [x] Add an interactive opening chest to successful quest completion, with a hinged lid, golden light, coins, rising treasure, and a finite particle burst.
+- [x] Automatically start the opening animation and supplied `public/win_audio.mpeg` when successful results appear. Remove the initial Open button; retain replay/mute and a truthful browser-autoplay fallback.
+- [x] Mount the reward only while successful results are active; pause sound when the tab hides and stop/reset it on exit. Keep timeout and disqualification silent.
+- [x] Preserve all recorded results, answer validation, progression, schedules, and backend code.
+- [x] Provide static completed artwork with motion off, readable audio-error feedback, and mobile layouts.
+- [x] Check playback through the end of the supplied track, replay/mute, exit cleanup, distinct result outcomes, 320/390/768/1440 layouts, build, and lint.
+
+- [x] Fix first-play audio by preparing Web Audio during answer submission before asynchronous validation. Add an isolated final-answer regression flow and keep player preview navigation in the same document.
