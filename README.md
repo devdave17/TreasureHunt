@@ -1,70 +1,219 @@
-# React + Vite
+# Treasure of Code
 
-## Halloween frontend
+Treasure of Code is a full-stack, horror-themed coding treasure hunt for
+competitive programming events. Players log in, choose an available quest,
+solve progressively unlocked riddles, and reach the treasure vault. Event
+keepers manage players, quests, questions, rankings, and live activity from a
+separate admin control room.
 
-The player and admin interfaces use the CEREBRO Halloween theme. See [plan.md](plan.md) for the completed redesign roadmap and [implementation notes](docs/HALLOWEEN_REDESIGN.md) for effects controls, artwork, and verification details.
+## Live deployment
+<https://treasure-of-code.vercel.app/>
 
-With `npm run dev` running, `/scripts/halloween-preview.html` provides isolated sample-data previews of every player screen and the admin sections. The preview blocks backend calls and mutations and is not included in the production build.
+The deployed player interface does not expose public leaderboard links. Quest
+rankings remain available to authorized administrators through the admin
+control room.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Highlights
 
-Currently, two official plugins are available:
+### Player experience
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- CEREBRO-inspired haunted visual theme with responsive player screens.
+- Player login and session recovery.
+- Quest lobby with scheduled quest states:
+  - available
+  - upcoming
+  - live
+  - ended
+- Quest selection and replay protection within a player session.
+- Club-branded entry passkey gate before a quest can be unlocked.
+- Map-based progression through locked and solved checkpoints.
+- Riddle and coding-challenge flow with server-side answer validation.
+- Countdown timer with automatic submission when the quest expires.
+- Progress recovery after refresh or reconnect.
+- Live quest presence and progress updates using Socket.IO.
+- Dedicated result screen for completed, expired, and disqualified attempts.
+- Haunted celebration sound when the player successfully finds the treasure.
 
-## React Compiler
+### Admin control room
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+Administrators can manage:
 
-Note: This will impact Vite dev & build performances.
+- Dashboard overview and event activity
+- Registered players
+- Quests and quest schedules
+- Questions and answer validation data
+- Quest rankings and participant details
+- Event statistics
 
-## Admin Panel Security
+Invigilators receive restricted access to the dashboard and player-management
+sections.
 
-Admin APIs are protected by a token middleware. Route name alone is not security.
+## Tech stack
 
-1. Copy `.env.example` to `.env`
-2. Set values for `ADMIN_API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `PLAYER_MASTER_PASSWORD`
-3. Start backend: `node server.js`
-4. Start frontend: `npm run dev`
-5. Open admin UI at `/admin.html`
-6. Login with `ADMIN_USERNAME` and `ADMIN_PASSWORD`
+- React 19
+- Vite
+- Express 5
+- MongoDB
+- Socket.IO
+- JWT-based admin authentication
+- `eslint` for linting
+- Vercel-compatible frontend deployment
 
-Without a valid token, `/admin/*` APIs return `401 Unauthorized`.
+## Project structure
 
-## Deployment Notes
-
-For Render, set the backend env vars `MONGO_URI` or `MONGODB_URI`, `MONGO_DB_NAME` or `MONGODB_DB`, `ADMIN_API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `PLAYER_MASTER_PASSWORD`.
-
-For Vercel, set `VITE_API_BASE_URL` to the Render backend URL so the frontend talks to the deployed API instead of `localhost`.
-
-This repo uses a separate admin entrypoint, so direct navigation to `/admin` is rewritten to `/admin.html` through `vercel.json`.
-
-## Bulk Insert Users
-
-You can insert multiple users in one request.
-
-### 1) JSON Body Bulk Import
-
-POST `/admin/users/bulk`
-
-Payload example:
-
-```json
-{
-	"users": [
-		{ "email": "a@example.com", "name": "A", "level": 1 },
-		{ "email": "b@example.com", "name": "B", "level": 2 }
-	]
-}
+```text
+.
+├── src/
+│   ├── App.jsx                 # Player application state and game flow
+│   ├── AppRouter.jsx           # Player and ranking route handling
+│   ├── components/             # Player UI, quest map, riddles, and results
+│   ├── admin/                  # Admin entry point and control-room UI
+│   ├── Controllers/            # Game and admin request handlers
+│   ├── routes/                 # Express API route definitions
+│   ├── services/               # Frontend API clients
+│   └── utils/                  # Shared timing and sound helpers
+├── public/                     # Logos, icons, and Halloween artwork
+├── data/                       # Seed and default data
+├── scripts/                    # Seeding, migration, and verification scripts
+├── server.js                   # Express and Socket.IO server
+├── admin.html                  # Admin Vite entry point
+└── vercel.json                 # Vercel SPA rewrites
 ```
 
-### 2) Seed From File
+## Requirements
 
-POST `/admin/users/seed`
+- Node.js 20 or newer
+- npm
+- MongoDB database
 
-This imports users from `data/defaultUsers.json`.
+## Local setup
 
-## Expanding the ESLint configuration
+1. Clone the repository and enter the project directory.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+   ```bash
+   git clone https://github.com/devdave17/TreasureHunt.git
+   cd TreasureHunt
+   ```
+
+2. Install dependencies.
+
+   ```bash
+   npm install
+   ```
+
+3. Create a local environment file.
+
+   ```bash
+   copy .env.example .env
+   ```
+
+   On macOS or Linux, use:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Set the values in `.env`. Never commit this file or real credentials.
+
+   ```env
+   PORT=5001
+   MONGO_URI=mongodb+srv://<username>:<password>@<cluster>/<database>
+   MONGO_DB_NAME=treasurehunt
+   ADMIN_API_TOKEN=<admin_api_token>
+   ADMIN_USERNAME=<admin_username>
+   ADMIN_PASSWORD=<admin_password>
+   INVIGILATOR_USERNAME=<invigilator_username>
+   INVIGILATOR_PASSWORD=<invigilator_password>
+   PLAYER_MASTER_PASSWORD=<player_master_password>
+   VITE_API_BASE_URL=http://localhost:5001
+   ```
+
+5. Start the backend:
+
+   ```bash
+   node server.js
+   ```
+
+6. In another terminal, start the Vite frontend:
+
+   ```bash
+   npm run dev
+   ```
+
+7. Open:
+
+   - Player app: <http://localhost:5173/>
+   - Admin app: <http://localhost:5173/admin.html>
+
+The backend checks MongoDB connectivity during startup. If the database is
+unavailable, the server exits with an error instead of running in a broken
+state.
+
+## Available commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Vite development server |
+| `npm run build` | Create the production frontend bundle |
+| `npm run preview` | Preview the production bundle locally |
+| `npm run lint` | Run ESLint across the project |
+| `node server.js` | Start the Express and Socket.IO backend |
+
+## Deployment
+
+### Frontend on Vercel
+
+Configure the Vercel project with:
+
+- Framework preset: **Vite**
+- Build command: `npm run build`
+- Output directory: `dist`
+- `VITE_API_BASE_URL`: the public URL of the deployed backend
+
+The `vercel.json` rewrites preserve direct navigation to `/admin` and player
+routes.
+
+### Backend
+
+Deploy the Node/Express server to a service that supports a long-running
+process and WebSocket connections, such as Render or another Node hosting
+provider. Configure:
+
+- `PORT`
+- `MONGO_URI` or `MONGODB_URI`
+- `MONGO_DB_NAME` or `MONGODB_DB`
+- `ADMIN_API_TOKEN`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+- `INVIGILATOR_USERNAME`
+- `INVIGILATOR_PASSWORD`
+- `PLAYER_MASTER_PASSWORD`
+
+After deployment, set the Vercel frontend's `VITE_API_BASE_URL` to the backend
+URL and redeploy the frontend.
+
+## Security notes
+
+- Do not commit `.env`, database connection strings, passwords, or API tokens.
+- Admin endpoints are protected by authentication middleware.
+- Admin credentials and player master credentials must be configured through
+  environment variables.
+- Keep the backend and frontend deployment URLs configured separately.
+- Use HTTPS in production so login tokens and gameplay requests are encrypted.
+
+## Development notes
+
+- The player ranking screen and ranking API are retained for authorized
+  administrative use; player-facing quest cards do not link to public rankings.
+- Quest completion uses a short browser-generated haunted chime, so no audio
+  package or external audio request is required.
+- Halloween artwork and redesign implementation notes are documented in
+  [`docs/HALLOWEEN_REDESIGN.md`](docs/HALLOWEEN_REDESIGN.md).
+- The isolated UI preview can be opened during development at:
+  `http://localhost:5173/scripts/halloween-preview.html`
+
+## License
+
+This repository is maintained for the Treasure of Code event by CEREBRO and
+Coding Club, IIIT Vadodara. Add the event's official license here if the
+project is distributed outside the organizing team.

@@ -27,7 +27,7 @@ function Challenge({ riddle, onSubmit, onBack, isSolved, submissionError, isSubm
   if (!riddle) return null;
   return <main className="hg-page hg-challenge">
     <header className="hg-topline"><span>TREASURE OF CODE <b> / THE CHALLENGE CHAMBER</b></span><button className="hg-button hg-secondary" onClick={onBack}>← Back to map</button></header>
-    <div className="horror-question-heading"><div><p className="hg-eyebrow">{riddle.stage || `CHECKPOINT ${riddle.num || ''}`}</p><h1 ref={headingRef} tabIndex={-1}>{riddle.title}</h1></div><span className={`hg-status ${isSolved ? 'solved' : ''}`}>{isSolved ? '✓ Solved' : riddle.difficulty || 'Challenge unlocked'}</span></div>
+    <div className="horror-question-heading"><div><p className="hg-eyebrow">{riddle.stage || `CHECKPOINT ${riddle.num || ''}`}</p><h1 ref={headingRef} tabIndex={-1}>{riddle.title}</h1></div>{isSolved && <span className="hg-status solved">✓ Solved</span>}</div>
     <div className="dread-workflow" aria-label="Solving workflow"><span>01 / READ THE CLUE</span><i aria-hidden="true">→</i><span>02 / CODE & RUN LOCALLY</span><i aria-hidden="true">→</i><span>03 / TRANSMIT YOUR OUTPUT</span></div>
     <div className="horror-question-layout">
       <div className="horror-question-reading">

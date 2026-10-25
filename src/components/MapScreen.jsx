@@ -27,10 +27,16 @@ function routeLayout(total, mobile = false) {
   });
   return { width, height: finish.y + 155, start, stops, finish, paths };
 }
-function Road({ layout, mobile, solvedCount, activeRiddle, total }) {
+function Road({ layout, mobile, solvedCount, activeRiddle, total, isEntryVerified }) {
   return <svg className={`hm-road ${mobile ? "hm-mobile-road" : "hm-desktop-road"}`} viewBox={`0 0 ${layout.width} ${layout.height}`} preserveAspectRatio="none" aria-hidden="true">
     {layout.paths.map((path, index) => {
-      const state = index < solvedCount || solvedCount >= total ? "travelled" : index + 1 === activeRiddle ? "open" : "unexplored";
+      const state = !isEntryVerified
+        ? "unexplored"
+        : index < solvedCount || solvedCount >= total
+          ? "travelled"
+          : index + 1 === activeRiddle
+            ? "open"
+            : "unexplored";
       return <g key={index} className={`hm-road-segment ${state}`}><path d={path} className="hm-road-shadow"/><path d={path} className="hm-road-edge"/><path d={path} className="hm-road-surface"/><path d={path} className="hm-road-markings"/></g>;
     })}
   </svg>;
@@ -38,32 +44,32 @@ function Road({ layout, mobile, solvedCount, activeRiddle, total }) {
 function placement(desktop, mobile) {
   return { "--map-x": `${desktop.x / 10}%`, "--map-y": `${desktop.y}px`, "--mobile-x": `${mobile.x / 4}%`, "--mobile-y": `${mobile.y}px` };
 }
-export default function MapScreen({ solvedCount = 0, activeRiddle, onNodeClick, onExit, questions = [], levelCounts = {} }) {
+export default function MapScreen({ solvedCount = 0, activeRiddle, onNodeClick, onExit, questions = [], levelCounts = {}, isEntryVerified = false, onEntranceClick }) {
   const total = questions.length;
   const progress = total ? Math.min(100, Math.max(0, solvedCount / total * 100)) : 0;
-  const active = questions[activeRiddle - 1];
+  const active = isEntryVerified ? questions[activeRiddle - 1] : null;
   const desktop = routeLayout(total);
   const mobile = routeLayout(total, true);
   return <main className="hg-page hg-map">
     <header className="hg-topline"><span>TREASURE OF CODE <b> / THE HUNT</b></span><button className="hg-button hg-secondary" onClick={onExit}>Exit quest ↗</button></header>
     <section className="hm-heading hg-reveal"><div><p className="hg-eyebrow">THE GRAVEYARD OF UNFINISHED CODE</p><h1 tabIndex={-1}>The haunted <em>trail.</em></h1><p>Follow the road. Decode each checkpoint. Reach the treasure vault.</p></div><div className="hm-progress"><span>{solvedCount} <small>/ {total} solved</small></span><progress value={progress} max="100" aria-label="Quest completion"/><span className="hm-progress-label">{Math.round(progress)}% OF THE TRAIL COMPLETE</span></div></section>
-    <div className="hm-map-toolbar"><span>{active ? `NEXT / ${active.title || `Riddle ${activeRiddle}`}` : total ? "ALL CHECKPOINTS CLEARED" : "WAITING FOR CHALLENGES"}</span><div className="hg-legend"><span>● Current</span><span>✓ Solved</span><span>○ Locked</span></div></div>
+    <div className="hm-map-toolbar"><span>{active ? `NEXT / ${active.title || `Riddle ${activeRiddle}`}` : !isEntryVerified ? "NEXT / VISIT THE ENTRANCE GATE" : total ? "ALL CHECKPOINTS CLEARED" : "WAITING FOR CHALLENGES"}</span><div className="hg-legend"><span>● Current</span><span>✓ Solved</span><span>○ Locked</span></div></div>
     {total === 0 ? <div className="hg-empty">No challenges are available for this quest yet.</div> : <div className="hm-world hg-reveal" style={{ "--map-height": `${desktop.height}px`, "--mobile-height": `${mobile.height}px` }} aria-label="Quest route from the entrance gate to the treasure vault">
       <div className="hm-terrain" aria-hidden="true"/>
-      <Road layout={desktop} solvedCount={solvedCount} activeRiddle={activeRiddle} total={total}/><Road layout={mobile} mobile solvedCount={solvedCount} activeRiddle={activeRiddle} total={total}/>
-      <div className="hm-landmark hm-gate" style={placement(desktop.start,mobile.start)}><img src="/halloween/cursed-graveyard.svg" alt=""/><span>THE ENTRANCE GATE</span><small>Your journey begins</small></div>
+      <Road layout={desktop} solvedCount={solvedCount} activeRiddle={activeRiddle} total={total} isEntryVerified={isEntryVerified}/><Road layout={mobile} mobile solvedCount={solvedCount} activeRiddle={activeRiddle} total={total} isEntryVerified={isEntryVerified}/>
+      <button type="button" className={`hm-landmark hm-gate hm-gate-button${isEntryVerified ? " unlocked" : " glowing"}`} style={placement(desktop.start,mobile.start)} onClick={onEntranceClick} aria-label={isEntryVerified ? "Club introduction completed" : "Open the club introduction at the entrance gate"}><img src="/halloween/cursed-graveyard.svg" alt="" /><span>THE ENTRANCE GATE</span>{isEntryVerified && <small>Club introduction remembered</small>}<strong>{isEntryVerified ? "ENTRY OPEN" : "CLICK TO ENTER"}</strong></button>
       <ol className="hm-stops">
         {questions.map((question,index) => {
           const num = index + 1;
           const solved = num <= solvedCount;
-          const current = !solved && num === activeRiddle;
+          const current = isEntryVerified && !solved && num === activeRiddle;
           const status = solved ? "solved" : current ? "current" : "locked";
           const players = Number(levelCounts[num]) || 0;
           return <li key={question.id || num} className={`hm-stop ${status}`} style={placement(desktop.stops[index],mobile.stops[index])}>
-            <button disabled={!solved && !current} onClick={() => solved ? onNodeClick(num,true) : onNodeClick(num)} aria-current={current ? "step" : undefined} aria-label={`Checkpoint ${num}: ${question.title || `Riddle ${num}`}. ${solved ? "Solved. Review clue" : current ? "Unlocked. Open challenge" : "Locked"}`}>
-              {current && <span className="hm-you">YOU ARE HERE</span>}
+            <button disabled={!isEntryVerified || (!solved && !current)} onClick={() => solved ? onNodeClick(num,true) : onNodeClick(num)} aria-current={current ? "step" : undefined} aria-label={`Checkpoint ${num}: ${question.title || `Riddle ${num}`}. ${!isEntryVerified ? "Complete the entrance introduction first" : solved ? "Solved. Review clue" : current ? "Unlocked. Open challenge" : "Locked"}`}>
+              {current && isEntryVerified && <span className="hm-you">YOU ARE HERE</span>}
               <span className="hm-node"><span>{solved ? "✓" : current ? <RuneIcon name="key" /> : <RuneIcon name="lock" />}</span></span>
-              <span className="hm-stop-label"><span className="hm-stop-status">{solved ? `CHECKPOINT ${num} / SOLVED` : current ? `CHECKPOINT ${num} / UNLOCKED` : `CHECKPOINT ${num} / LOCKED`}</span><strong>{question.title || `Riddle ${num}`}</strong><span className="hm-stop-meta">{String(question.difficulty || "MEDIUM").toUpperCase()} <i>·</i> {players} player{players === 1 ? "" : "s"}</span><span className="hm-stop-action">{solved ? "Review clue ↗" : current ? "Open challenge →" : `Solve checkpoint ${num-1} first`}</span></span>
+              <span className="hm-stop-label"><span className="hm-stop-status">{solved ? `CHECKPOINT ${num} / SOLVED` : current ? `CHECKPOINT ${num} / UNLOCKED` : `CHECKPOINT ${num} / LOCKED`}</span><strong>{question.title || `Riddle ${num}`}</strong><span className="hm-stop-meta">{players} player{players === 1 ? "" : "s"}</span><span className="hm-stop-action">{solved ? "Review clue ↗" : current ? "Open challenge →" : `Solve checkpoint ${num-1} first`}</span></span>
             </button>
           </li>;
         })}

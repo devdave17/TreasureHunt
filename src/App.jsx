@@ -18,6 +18,7 @@ import {
 
 const GAME_API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const QUEST_ENTRY_PASSKEY = "cout<<masters;";
 const PLAYER_SESSION_KEY = "treasurehunt_player_session";
 const ACTIVE_QUEST_SESSION_KEY = "treasurehunt_active_quest";
 
@@ -129,6 +130,11 @@ const App = () => {
   const [finalElapsedSeconds, setFinalElapsedSeconds] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showReplayWarning, setShowReplayWarning] = useState(false);
+  const [showQuestPasskey, setShowQuestPasskey] = useState(false);
+  const [isQuestEntryVerified, setIsQuestEntryVerified] = useState(false);
+  const [questPasskey, setQuestPasskey] = useState("");
+  const [questPasskeyError, setQuestPasskeyError] = useState("");
+  const [pendingQuestPasskeyId, setPendingQuestPasskeyId] = useState("");
   const [pendingQuestLaunchId, setPendingQuestLaunchId] = useState("");
   const [replayWarningQuestName, setReplayWarningQuestName] = useState("");
   const [isBlockedByInvigilator, setIsBlockedByInvigilator] = useState(false);
@@ -899,6 +905,7 @@ const App = () => {
     setTimeRemaining(remainingSeconds);
     setQuestTimeLimitSeconds(questDurationSeconds);
     setIsTimeExpired(false);
+    setIsQuestEntryVerified(false);
     setFinalElapsedSeconds(null);
     setCurrentRiddle(null);
     setIsSolvedRiddle(false);
@@ -1081,6 +1088,48 @@ const App = () => {
     setReplayWarningQuestName("");
   };
 
+  const handleCancelQuestPasskey = () => {
+    setShowQuestPasskey(false);
+    setQuestPasskey("");
+    setQuestPasskeyError("");
+    setPendingQuestPasskeyId("");
+  };
+
+  const handleEntranceClick = () => {
+    if (isQuestEntryVerified) {
+      return;
+    }
+    setPendingQuestPasskeyId(String(activeQuestId || selectedQuestId));
+    setQuestPasskey("");
+    setQuestPasskeyError("");
+    setShowQuestPasskey(true);
+  };
+
+  const handleQuestPasskeySubmit = (event) => {
+    event.preventDefault();
+    if (questPasskey.trim() !== QUEST_ENTRY_PASSKEY) {
+      setQuestPasskeyError("Please type the club name exactly as shown above.");
+      return;
+    }
+
+    const nextQuestId = pendingQuestPasskeyId || selectedQuestId;
+    setIsQuestEntryVerified(true);
+    setShowQuestPasskey(false);
+    setQuestPasskey("");
+    setQuestPasskeyError("");
+    setPendingQuestPasskeyId("");
+    if (nextQuestId) {
+      const storedActiveQuestId = String(
+        localStorage.getItem(ACTIVE_QUEST_SESSION_KEY) || "",
+      ).trim();
+      if (storedActiveQuestId === String(nextQuestId)) {
+        void recoverActiveQuest();
+      } else {
+        void launchSelectedQuest(nextQuestId);
+      }
+    }
+  };
+
   const handleConfirmReplayWarning = () => {
     const nextQuestId = pendingQuestLaunchId || selectedQuestId;
     setShowReplayWarning(false);
@@ -1197,6 +1246,8 @@ const App = () => {
             onExit={handleRequestExitQuest}
             questions={questions}
             levelCounts={questLevelCounts}
+            isEntryVerified={isQuestEntryVerified}
+            onEntranceClick={handleEntranceClick}
           />
         </>
       </section>
@@ -1271,6 +1322,42 @@ const App = () => {
               </button>
             </div>
           </div>
+        </HauntDialog>
+      )}
+
+      {showQuestPasskey && (
+        <HauntDialog className="horror-game-dialog" labelId="quest-passkey-title" onClose={handleCancelQuestPasskey}>
+          <form className="profile-modal exit-confirm-modal quest-passkey-modal anim-reveal" onSubmit={handleQuestPasskeySubmit}>
+            <div className="exit-confirm-heading" id="quest-passkey-title">Meet the Keepers</div>
+            <p className="exit-confirm-message">
+              This hunt is conducted by our club. Type the club name below once so you remember who created the challenge.
+            </p>
+            <p className="quest-passkey-club-name">COUT Masters</p>
+            <code className="quest-passkey-display">cout&lt;&lt;masters;</code>
+            <label className="quest-passkey-label" htmlFor="quest-entry-passkey">Remember the club name</label>
+            <input
+              id="quest-entry-passkey"
+              className="quest-passkey-input"
+              type="text"
+              value={questPasskey}
+              onChange={(event) => {
+                setQuestPasskey(event.target.value);
+                setQuestPasskeyError("");
+              }}
+              placeholder="Type cout&lt;&lt;masters;"
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              autoFocus
+              aria-invalid={Boolean(questPasskeyError)}
+              aria-describedby="quest-passkey-error"
+            />
+            <p className="quest-passkey-error" id="quest-passkey-error" role="alert">{questPasskeyError}</p>
+            <div className="exit-confirm-actions">
+              <button className="btn-primary" type="submit">Enter the hunt</button>
+              <button className="btn-secondary" type="button" onClick={handleCancelQuestPasskey}>Cancel</button>
+            </div>
+          </form>
         </HauntDialog>
       )}
 
