@@ -52,6 +52,18 @@ app.use((req, res, next) => {
   next()
 })
 
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+
+  res.on("finish", () => {
+    console.log(
+      `[request] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - startedAt}ms`,
+    );
+  });
+
+  next();
+});
+
 // 👇 routes
 app.post("/admin/auth/login", adminLoginLimiter, loginAdmin)
 app.use("/admin", adminAuth, adminRoutes)
@@ -61,6 +73,10 @@ app.use("/game", gameRoutes)
 app.use(express.static(path.join(__dirname, "dist")))
 
 app.use((req, res) => {
+  if (req.path.startsWith("/admin") || req.path.startsWith("/game")) {
+    return res.status(404).json({ error: "API route not found" })
+  }
+
   res.sendFile(path.join(__dirname, "dist", "index.html"))
 })
 
