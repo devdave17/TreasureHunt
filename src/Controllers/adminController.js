@@ -38,6 +38,7 @@ const normalizeUserPayload = (user) => {
     currentLevel: level,
     isBlocked: Boolean(user.isBlocked ?? false),
     score: Number.isFinite(Number(user.score)) ? Number(user.score) : 0,
+    wrongAttempt: 0,
     completedLevels: Array.isArray(user.completedLevels) ? user.completedLevels : [],
     createdAt: new Date(),
     lastActive: new Date()
@@ -118,6 +119,7 @@ export const addUser = async (req, res) => {
       currentLevel: level,
       isBlocked: false,
       score: 0,
+      wrongAttempt: 0,
       completedLevels: [],
       createdAt: new Date(),
       lastActive: new Date()

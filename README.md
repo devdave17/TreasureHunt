@@ -88,6 +88,14 @@ sections.
 
 ## Local setup
 
+### Wrong submission counts
+
+The player profile shows the all-time wrong-submission total. During a quest,
+the challenge screen also shows the count for the current level. The
+authenticated `GET /game/progress/wrong-attempts` endpoint accepts optional
+`questId` and `level` query parameters and returns `totalWrong` and per-level
+`wrongCount` values. Run the backend integration tests with `npm test`.
+
 1. Clone the repository and enter the project directory.
 
    ```bash

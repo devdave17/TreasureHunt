@@ -126,6 +126,228 @@ const getQuestProgressDocRef = (userId, questId) => {
   return db.collection(dbConfig.COLLECTIONS.QUEST_PROGRESS).doc(progressId);
 };
 
+const ensureQuestProgressWrongAttemptLevel = async (
+  userId,
+  questId,
+  level,
+  increment = false,
+  wrongAnswer = null,
+) => {
+  const normalizedUserId = String(userId || "").trim();
+  const normalizedQuestId = String(questId || "").trim();
+  const normalizedLevel = Number(level);
+  const progressId = buildQuestProgressId(normalizedUserId, normalizedQuestId);
+  const mongoDb = await db.ensureReady();
+  const collection = mongoDb.collection(dbConfig.COLLECTIONS.QUEST_PROGRESS);
+  const attempts = {
+    $cond: [{ $isArray: "$wrongAttempts" }, "$wrongAttempts", []],
+  };
+  const matchingLevel = {
+    $eq: [
+      {
+        $convert: {
+          input: "$$entry.level",
+          to: "int",
+          onError: 0,
+          onNull: 0,
+        },
+      },
+      normalizedLevel,
+    ],
+  };
+  const normalizedAttempts = {
+    $reduce: {
+      input: attempts,
+      initialValue: [],
+      in: {
+        $let: {
+          vars: {
+            entryLevel: {
+              $convert: {
+                input: "$$this.level",
+                to: "int",
+                onError: 0,
+                onNull: 0,
+              },
+            },
+            entryCount: {
+              $convert: {
+                input: {
+                  $ifNull: ["$$this.wrongCount", "$$this.count"],
+                },
+                to: "int",
+                onError: 0,
+                onNull: 0,
+              },
+            },
+            entryWrongAnswers: {
+              $cond: [
+                {
+                  $isArray: {
+                    $ifNull: ["$$this.wrongAnswers", "$$this.WrongAnswers"],
+                  },
+                },
+                {
+                  $ifNull: ["$$this.wrongAnswers", "$$this.WrongAnswers"],
+                },
+                [],
+              ],
+            },
+          },
+          in: {
+            $cond: [
+              { $gt: ["$$entryLevel", 0] },
+              {
+                $cond: [
+                  {
+                    $in: [
+                      "$$entryLevel",
+                      {
+                        $map: {
+                          input: "$$value",
+                          as: "entry",
+                          in: "$$entry.level",
+                        },
+                      },
+                    ],
+                  },
+                  {
+                    $map: {
+                      input: "$$value",
+                      as: "entry",
+                      in: {
+                        $cond: [
+                          { $eq: ["$$entry.level", "$$entryLevel"] },
+                          {
+                            level: "$$entryLevel",
+                            wrongCount: {
+                              $add: ["$$entry.wrongCount", "$$entryCount"],
+                            },
+                            wrongAnswers: {
+                              $concatArrays: [
+                                "$$entry.wrongAnswers",
+                                "$$entryWrongAnswers",
+                              ],
+                            },
+                          },
+                          "$$entry",
+                        ],
+                      },
+                    },
+                  },
+                  {
+                    $concatArrays: [
+                      "$$value",
+                      [
+                        {
+                          level: "$$entryLevel",
+                          wrongCount: "$$entryCount",
+                          wrongAnswers: "$$entryWrongAnswers",
+                        },
+                      ],
+                    ],
+                  },
+                ],
+              },
+              "$$value",
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  const updatedProgress = await collection.findOneAndUpdate(
+    { _id: progressId },
+    [
+      {
+        $set: {
+          wrongAttempts: {
+            $let: {
+              vars: { normalized: normalizedAttempts },
+              in: {
+                $let: {
+                  vars: {
+                    existing: {
+                      $filter: {
+                        input: "$$normalized",
+                        as: "entry",
+                        cond: matchingLevel,
+                      },
+                    },
+                    otherLevels: {
+                      $filter: {
+                        input: "$$normalized",
+                        as: "entry",
+                        cond: { $not: [matchingLevel] },
+                      },
+                    },
+                  },
+                  in: {
+                    $concatArrays: [
+                      "$$otherLevels",
+                      [
+                        {
+                          level: normalizedLevel,
+                          wrongCount: {
+                            $add: [
+                              {
+                                $sum: {
+                                  $map: {
+                                    input: "$$existing",
+                                    as: "entry",
+                                    in: "$$entry.wrongCount",
+                                  },
+                                },
+                              },
+                              increment ? 1 : 0,
+                            ],
+                          },
+                          wrongAnswers: {
+                            $concatArrays: [
+                              {
+                                $reduce: {
+                                  input: "$$existing",
+                                  initialValue: [],
+                                  in: {
+                                    $concatArrays: [
+                                      "$$value",
+                                      "$$this.wrongAnswers",
+                                    ],
+                                  },
+                                },
+                              },
+                              typeof wrongAnswer === "string"
+                                ? [{ $literal: wrongAnswer }]
+                                : [],
+                            ],
+                          },
+                        },
+                      ],
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          userId: normalizedUserId,
+          questId: normalizedQuestId,
+          updatedAt: new Date(),
+        },
+      },
+    ],
+    {
+      upsert: true,
+      returnDocument: "after",
+      projection: { wrongAttempts: 1 },
+    },
+  );
+
+  return Array.isArray(updatedProgress?.wrongAttempts)
+    ? updatedProgress.wrongAttempts
+    : [];
+};
+
 const getQuestRoomName = (questId) => `quest:${String(questId || "").trim()}`;
 
 const getQuestExpiryPayload = (questData, nowMs = Date.now()) => {
@@ -668,6 +890,20 @@ export const loginPlayer = async (req, res) => {
     }
 
     const player = snapshot.docs[0].data() || {};
+    const playerId = String(snapshot.docs[0].id);
+    const users = (await db.ensureReady()).collection(dbConfig.COLLECTIONS.USERS);
+    await users.updateOne(
+      {
+        _id: playerId,
+        $or: [{ wrongAttempt: { $exists: false } }, { wrongAttempt: null }],
+      },
+      { $set: { wrongAttempt: 0 } },
+    );
+    const currentPlayer = await users.findOne(
+      { _id: playerId },
+      { projection: { wrongAttempt: 1 } },
+    );
+    player.wrongAttempt = Number(currentPlayer?.wrongAttempt) || 0;
 
     if (player.isBlocked) {
       return res
@@ -682,11 +918,33 @@ export const loginPlayer = async (req, res) => {
         .json({ error: "Server misconfigured. Set PLAYER_JWT_SECRET." });
     }
 
-    const playerId = String(snapshot.docs[0].id);
+    const token = jwt.sign(
+      {
+        type: "player",
+        role: "player",
+      },
+      playerJwtSecret,
+      {
+        subject: playerId,
+        expiresIn: "6h",
+      },
+    );
+
     res.json({
       message: "Login successful",
       token,
-      player: serializePlayer(playerId, player, normalizedEmail),
+      player: {
+        id: playerId,
+        email: player.email || normalizedEmail,
+        name: player.name || "",
+        score: Number(player.score) || 0,
+        wrongAttempt: Number(player.wrongAttempt) || 0,
+        currentLevel: Number(player.currentLevel) || 1,
+        completedLevels: Array.isArray(player.completedLevels)
+          ? player.completedLevels
+          : [],
+        isBlocked: Boolean(player.isBlocked),
+      },
     });
   } catch (error) {
     console.error("Error logging in player:", error);
@@ -1269,7 +1527,31 @@ export const startQuestionTimer = async (req, res) => {
       updatedAt: now,
     };
 
-    await questProgressRef.set(questProgress);
+    const mongoDb = await db.ensureReady();
+    await mongoDb.collection(dbConfig.COLLECTIONS.QUEST_PROGRESS).updateOne(
+      { _id: questProgressRef.id },
+      [
+        {
+          $replaceWith: {
+            $mergeObjects: [
+              {
+                $literal: {
+                  _id: questProgressRef.id,
+                  ...questProgress,
+                },
+              },
+              { wrongAttempts: { $ifNull: ["$wrongAttempts", []] } },
+            ],
+          },
+        },
+      ],
+      { upsert: true },
+    );
+    questProgress.wrongAttempts = await ensureQuestProgressWrongAttemptLevel(
+      userId,
+      questId,
+      Number(level),
+    );
     invalidateQuestRankingCache(questId);
     scheduleQuestDistributionBroadcast(req.io, questId);
 
@@ -1365,6 +1647,91 @@ export const getUserProgress = async (req, res) => {
   } catch (error) {
     console.error("Error fetching user progress:", error);
     return res.status(500).json({ error: "Failed to get progress" });
+  }
+};
+
+export const getWrongAttempts = async (req, res) => {
+  try {
+    const userId = String(req.playerId || "");
+    const questId = String(req.query?.questId || "").trim();
+    const rawLevel = req.query?.level;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Player identity is required" });
+    }
+
+    if (rawLevel !== undefined && !questId) {
+      return res.status(400).json({
+        error: "questId is required when level is provided",
+      });
+    }
+
+    const eligibility = await ensurePlayerAllowed(userId);
+    if (!eligibility.allowed) {
+      return res.status(eligibility.status).json(eligibility.payload);
+    }
+
+    if (rawLevel !== undefined) {
+      const level = Number(rawLevel);
+      if (!Number.isInteger(level) || level < 1) {
+        return res.status(400).json({ error: "level must be a positive integer" });
+      }
+
+      const questDoc = await db
+        .collection(dbConfig.COLLECTIONS.QUESTS)
+        .doc(questId)
+        .get();
+      if (!questDoc.exists) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+
+      await ensureQuestProgressWrongAttemptLevel(userId, questId, level);
+    }
+
+    const mongoDb = await db.ensureReady();
+    const user = await mongoDb
+      .collection(dbConfig.COLLECTIONS.USERS)
+      .findOne({ _id: userId }, { projection: { wrongAttempt: 1 } });
+    const progressSnap = questId
+      ? await getQuestProgressDocRef(userId, questId).get()
+      : null;
+    const countsByLevel = new Map();
+    const progress = progressSnap?.exists ? progressSnap.data() || {} : {};
+
+    for (const entry of Array.isArray(progress.wrongAttempts)
+      ? progress.wrongAttempts
+      : []) {
+      const level = Number(entry?.level);
+      if (!Number.isInteger(level) || level < 1) {
+        continue;
+      }
+
+      const wrongCount = Number(entry?.wrongCount ?? entry?.count) || 0;
+      const levelData = countsByLevel.get(level) || {
+        wrongCount: 0,
+        wrongAnswers: [],
+      };
+      levelData.wrongCount += wrongCount;
+      const wrongAnswers = entry?.wrongAnswers ?? entry?.WrongAnswers;
+      if (Array.isArray(wrongAnswers)) {
+        levelData.wrongAnswers.push(
+          ...wrongAnswers.filter((answer) => typeof answer === "string"),
+        );
+      }
+      countsByLevel.set(level, levelData);
+    }
+
+    const levels = [...countsByLevel.entries()]
+      .sort(([levelA], [levelB]) => levelA - levelB)
+      .map(([level, levelData]) => ({ level, ...levelData }));
+
+    return res.json({
+      totalWrong: Number(user?.wrongAttempt) || 0,
+      levels,
+    });
+  } catch (error) {
+    console.error("Error fetching wrong-attempt counts:", error);
+    return res.status(500).json({ error: "Failed to fetch wrong-attempt counts" });
   }
 };
 
@@ -1529,6 +1896,28 @@ export const validateQuestAnswer = async (req, res) => {
     if (String(question.questId || "") !== String(questId)) {
       return res.status(400).json({ error: "Question does not belong to selected quest" });
     }
+    const questionLevel = Number(question.level) || 1;
+    const questProgressRef = getQuestProgressDocRef(userId, questId);
+    const existingProgressSnapshot = await questProgressRef.get();
+    const completedQuestionLevels = existingProgressSnapshot.exists
+      ? existingProgressSnapshot.data()?.completedQuestionLevels || []
+      : [];
+    const isAlreadySolved = Array.isArray(completedQuestionLevels) &&
+      completedQuestionLevels.some((entry) => {
+        const completedQuestionId =
+          entry && typeof entry === "object" ? String(entry.questionId || "") : "";
+        const completedLevel =
+          entry && typeof entry === "object"
+            ? Number(entry.questionLevel || entry.level || 0)
+            : Number(entry);
+        return completedQuestionId
+          ? completedQuestionId === String(questionId)
+          : completedLevel === questionLevel;
+      });
+
+    if (isAlreadySolved) {
+      return res.status(409).json({ error: "Question has already been solved" });
+    }
 
     const validationMode = ["strict", "flexible"].includes(String(question.answerValidationMode || "").toLowerCase())
       ? String(question.answerValidationMode).toLowerCase()
@@ -1560,12 +1949,63 @@ export const validateQuestAnswer = async (req, res) => {
       isCorrect,
     });
 
+    let wrongAttempts = await ensureQuestProgressWrongAttemptLevel(
+      userId,
+      questId,
+      questionLevel,
+    );
+    const mongoDb = await db.ensureReady();
+    let totalWrong = Number(eligibility.userData?.wrongAttempt) || 0;
+
+    if (!isCorrect) {
+      await mongoDb.collection(dbConfig.COLLECTIONS.USERS).updateOne(
+        { _id: String(userId) },
+        { $inc: { wrongAttempt: 1 } },
+      );
+      wrongAttempts = await ensureQuestProgressWrongAttemptLevel(
+        userId,
+        questId,
+        questionLevel,
+        true,
+        String(answer || "").trim(),
+      );
+    }
+
+    const updatedUser = await mongoDb
+      .collection(dbConfig.COLLECTIONS.USERS)
+      .findOne(
+        { _id: String(userId) },
+        { projection: { wrongAttempt: 1 } },
+      );
+    totalWrong = Number(updatedUser?.wrongAttempt) || 0;
+    const levelWrongCount = wrongAttempts
+      .filter((entry) => Number(entry?.level) === questionLevel)
+      .reduce(
+        (total, entry) =>
+          total + (Number(entry?.wrongCount ?? entry?.count) || 0),
+        0,
+      );
+
     return res.json({
       isCorrect,
       message: isCorrect ? "Correct answer" : "Incorrect answer",
+      totalWrong,
+      wrongAttempt: totalWrong,
+      levelWrongCount,
+      levels: wrongAttempts
+        .map((entry) => ({
+          level: Number(entry?.level) || 0,
+          wrongCount: Number(entry?.wrongCount ?? entry?.count) || 0,
+          wrongAnswers: Array.isArray(entry?.wrongAnswers ?? entry?.WrongAnswers)
+            ? (entry.wrongAnswers ?? entry.WrongAnswers).filter(
+                (wrongAnswer) => typeof wrongAnswer === "string",
+              )
+            : [],
+        }))
+        .filter((entry) => entry.level > 0),
       question: {
         id: questionDoc.id,
-        level: Number(question.level) || null,
+        level: questionLevel,
         title: question.title || "",
       },
       serverNowMs: finalServerNowMs,
