@@ -756,11 +756,26 @@ const App = () => {
         return;
       }
 
+      if (payload?.requiresName) {
+        return { requiresName: true };
+      }
+
+      completePlayerLogin(payload, email);
+      return { requiresName: false };
+    } catch {
+      setLoginError("Unable to connect right now. Please try again.");
+      return { requiresName: false };
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const completePlayerLogin = (payload, fallbackEmail) => {
       const player = payload?.player || {};
       const token = payload?.token || payload?.accessToken || "";
       const nextUser = {
         id: player.id || "",
-        email: player.email || email,
+        email: player.email || fallbackEmail,
         name: player.name || "",
         score: Number(player.score) || 0,
         currentLevel: Number(player.currentLevel) || 1,
@@ -784,8 +799,32 @@ const App = () => {
       setQuestError("");
       setShouldShowProfileModal(true);
       goScreen("screen-quest");
+  };
+
+  const registerPlayer = async (email, password, name) => {
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const response = await fetch(`${GAME_API_BASE}/game/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setLoginError(
+          payload?.error || "Unable to create your account. Please try again.",
+        );
+        return false;
+      }
+
+      completePlayerLogin(payload, email);
+      return true;
     } catch {
       setLoginError("Unable to connect right now. Please try again.");
+      return false;
     } finally {
       setIsLoggingIn(false);
     }
@@ -1295,6 +1334,7 @@ const App = () => {
       >
         <StartScreen
           onSubmit={submitStartKey}
+          onRegister={registerPlayer}
           onBack={handleBackToLanding}
           loginError={loginError}
           isLoggingIn={isLoggingIn}

@@ -6,6 +6,7 @@ import {
   getQuestLevelDistribution,
   getUserProgress,
   loginPlayer,
+  registerPlayer,
   updatePlayerProgress,
   startQuestionTimer,
   finalizeQuestAttempt,
@@ -22,6 +23,7 @@ import {
 const router = express.Router();
 
 router.post("/login", playerLoginLimiter, loginPlayer);
+router.post("/register", playerLoginLimiter, registerPlayer);
 router.get("/quests", getPublicQuests);
 router.get("/quests/:questId/questions", getPublicQuestQuestions);
 router.get("/quests/:questId/ranking", getQuestRanking);

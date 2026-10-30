@@ -15,6 +15,42 @@ const normalizeEmail = (email) =>
     .trim()
     .toLowerCase();
 
+const isInstituteEmail = (email) =>
+  /^[^\s@]+@iiitvadodara\.ac\.in$/.test(email);
+
+const getPlayerToken = (playerId) => {
+  const playerJwtSecret =
+    process.env.PLAYER_JWT_SECRET || process.env.PLAYER_MASTER_PASSWORD || "";
+
+  if (!playerJwtSecret) {
+    return null;
+  }
+
+  return jwt.sign(
+    {
+      type: "player",
+      role: "player",
+    },
+    playerJwtSecret,
+    {
+      subject: String(playerId),
+      expiresIn: "6h",
+    },
+  );
+};
+
+const serializePlayer = (playerId, player, email) => ({
+  id: String(playerId),
+  email: player.email || email,
+  name: player.name || "",
+  score: Number(player.score) || 0,
+  currentLevel: Number(player.currentLevel) || 1,
+  completedLevels: Array.isArray(player.completedLevels)
+    ? player.completedLevels
+    : [],
+  isBlocked: Boolean(player.isBlocked),
+});
+
 const normalizeHackerRankScore = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
@@ -600,6 +636,12 @@ export const loginPlayer = async (req, res) => {
       return res.status(400).json({ error: "email and password are required" });
     }
 
+    if (!isInstituteEmail(normalizedEmail)) {
+      return res
+        .status(400)
+        .json({ error: "Use your @iiitvadodara.ac.in email address." });
+    }
+
     if (!masterPassword) {
       return res
         .status(503)
@@ -618,9 +660,11 @@ export const loginPlayer = async (req, res) => {
       .get();
 
     if (snapshot.empty) {
-      return res
-        .status(401)
-        .json({ error: "Email not registered. Contact admin." });
+      return res.json({
+        message: "Name required to create account",
+        requiresName: true,
+        email: normalizedEmail,
+      });
     }
 
     const player = snapshot.docs[0].data() || {};
@@ -631,46 +675,102 @@ export const loginPlayer = async (req, res) => {
         .json({ error: "Your account is blocked. Contact admin." });
     }
 
-    const playerJwtSecret =
-      process.env.PLAYER_JWT_SECRET || process.env.PLAYER_MASTER_PASSWORD || "";
-
-    if (!playerJwtSecret) {
+    const token = getPlayerToken(snapshot.docs[0].id);
+    if (!token) {
       return res
         .status(503)
         .json({ error: "Server misconfigured. Set PLAYER_JWT_SECRET." });
     }
 
     const playerId = String(snapshot.docs[0].id);
-    const token = jwt.sign(
-      {
-        type: "player",
-        role: "player",
-      },
-      playerJwtSecret,
-      {
-        subject: playerId,
-        expiresIn: "6h",
-      },
-    );
-
     res.json({
       message: "Login successful",
       token,
-      player: {
-        id: playerId,
-        email: player.email || normalizedEmail,
-        name: player.name || "",
-        score: Number(player.score) || 0,
-        currentLevel: Number(player.currentLevel) || 1,
-        completedLevels: Array.isArray(player.completedLevels)
-          ? player.completedLevels
-          : [],
-        isBlocked: Boolean(player.isBlocked),
-      },
+      player: serializePlayer(playerId, player, normalizedEmail),
     });
   } catch (error) {
     console.error("Error logging in player:", error);
     res.status(500).json({ error: "Failed to login" });
+  }
+};
+
+export const registerPlayer = async (req, res) => {
+  try {
+    const { email, password, name } = req.body || {};
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedName = String(name || "").trim();
+    const masterPassword = String(
+      process.env.PLAYER_MASTER_PASSWORD || "",
+    ).trim();
+
+    if (!normalizedEmail || !password || !normalizedName) {
+      return res
+        .status(400)
+        .json({ error: "email, password and name are required" });
+    }
+
+    if (!isInstituteEmail(normalizedEmail)) {
+      return res
+        .status(400)
+        .json({ error: "Use your @iiitvadodara.ac.in email address." });
+    }
+
+    if (!masterPassword) {
+      return res
+        .status(503)
+        .json({ error: "Server misconfigured. Set PLAYER_MASTER_PASSWORD." });
+    }
+
+    if (String(password).trim() !== masterPassword) {
+      return res.status(401).json({ error: "Invalid password." });
+    }
+
+    if (
+      !process.env.PLAYER_JWT_SECRET &&
+      !process.env.PLAYER_MASTER_PASSWORD
+    ) {
+      return res
+        .status(503)
+        .json({ error: "Server misconfigured. Set PLAYER_JWT_SECRET." });
+    }
+
+    const users = db.collection(dbConfig.COLLECTIONS.USERS);
+    const existingUser = await users
+      .where("email", "==", normalizedEmail)
+      .limit(1)
+      .get();
+
+    if (!existingUser.empty) {
+      return res.status(409).json({ error: "This email is already registered." });
+    }
+
+    const player = {
+      email: normalizedEmail,
+      name: normalizedName,
+      currentLevel: 1,
+      isBlocked: false,
+      score: 0,
+      completedLevels: [],
+      createdAt: new Date(),
+      lastActive: new Date(),
+    };
+    const docRef = await users.add(player);
+    const token = getPlayerToken(docRef.id);
+
+    if (!token) {
+      return res
+        .status(503)
+        .json({ error: "Server misconfigured. Set PLAYER_JWT_SECRET." });
+    }
+
+    return res.status(201).json({
+      message: "Account created successfully",
+      token,
+      player: serializePlayer(docRef.id, player, normalizedEmail),
+    });
+  } catch (error) {
+    console.error("Error registering player:", error);
+    res.status(500).json({ error: "Failed to create account" });
   }
 };
 
