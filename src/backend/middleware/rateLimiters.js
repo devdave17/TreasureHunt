@@ -25,6 +25,11 @@ const playerKey = (req) => {
   return `ip:${ipKey(req)}`;
 };
 
+const playerLoginMax = (() => {
+  const configuredMax = Number.parseInt(process.env.PLAYER_LOGIN_RATE_LIMIT_MAX || "500", 10);
+  return Number.isFinite(configuredMax) && configuredMax > 0 ? configuredMax : 500;
+})();
+
 export const adminLoginLimiter = buildLimiter({
   windowMs: 60 * 1000,
   max: 10,
@@ -34,14 +39,14 @@ export const adminLoginLimiter = buildLimiter({
 
 export const playerLoginLimiter = buildLimiter({
   windowMs: 60 * 1000,
-  max: 20,
+  max: playerLoginMax,
   keyGenerator: ipKey,
   label: "player-login",
 });
 
 export const validateAnswerLimiter = buildLimiter({
   windowMs: 60 * 1000,
-  max: 30,
+  max: 10,
   keyGenerator: playerKey,
   label: "validate-answer",
 });
