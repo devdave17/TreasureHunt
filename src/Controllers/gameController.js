@@ -44,6 +44,7 @@ const serializePlayer = (playerId, player, email) => ({
   email: player.email || email,
   name: player.name || "",
   score: Number(player.score) || 0,
+  wrongAttempt: Number(player.wrongAttempt) || 0,
   currentLevel: Number(player.currentLevel) || 1,
   completedLevels: Array.isArray(player.completedLevels)
     ? player.completedLevels
@@ -997,6 +998,7 @@ export const registerPlayer = async (req, res) => {
       isBlocked: false,
       score: 0,
       completedLevels: [],
+      wrongAttempt: 0,
       createdAt: new Date(),
       lastActive: new Date(),
     };
@@ -1679,7 +1681,10 @@ export const getWrongAttempts = async (req, res) => {
     const mongoDb = await db.ensureReady();
     const user = await mongoDb
       .collection(dbConfig.COLLECTIONS.USERS)
-      .findOne({ _id: userId }, { projection: { wrongAttempt: 1 } });
+      .findOne(
+        { _id: userId },
+        { projection: { wrongAttempt: 1 } },
+      );
     const progressSnap = questId
       ? await getQuestProgressDocRef(userId, questId).get()
       : null;
@@ -1944,11 +1949,28 @@ export const validateQuestAnswer = async (req, res) => {
     );
     const mongoDb = await db.ensureReady();
     let totalWrong = Number(eligibility.userData?.wrongAttempt) || 0;
-
     if (!isCorrect) {
       await mongoDb.collection(dbConfig.COLLECTIONS.USERS).updateOne(
         { _id: String(userId) },
-        { $inc: { wrongAttempt: 1 } },
+        [
+          {
+            $set: {
+              wrongAttempt: {
+                $add: [
+                  {
+                    $convert: {
+                      input: "$wrongAttempt",
+                      to: "int",
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                  1,
+                ],
+              },
+            },
+          },
+        ],
       );
       wrongAttempts = await ensureQuestProgressWrongAttemptLevel(
         userId,
