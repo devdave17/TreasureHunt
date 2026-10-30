@@ -373,6 +373,7 @@ export const dbConfig = {
     currentLevel: 1,
     isBlocked: false,
     score: 0,
+    wrongAttempt: 0,
     completedLevels: [],
     lastActive: new Date()
   },

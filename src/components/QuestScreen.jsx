@@ -86,7 +86,7 @@ export default function QuestScreen({
         <span className="haunt-lobby-wordmark"><OfficialLogo /> Treasure <em>of</em> Code</span>
         <div className="haunt-lobby-account" ref={profileRef}>
           <button ref={profileButtonRef} type="button" className="haunt-lobby-profile-button" aria-label="Player profile" aria-expanded={showProfile} aria-controls="lobby-player-profile" onClick={() => showProfile ? closeProfile() : setProfileOpen(true)}><span className="haunt-lobby-avatar">{userInitial}</span><span className="haunt-lobby-profile-name">{name}</span><span aria-hidden="true">⌄</span></button>
-          {showProfile && <div className="haunt-lobby-profile" id="lobby-player-profile"><p className="haunt-lobby-kicker">YOUR HUNTER PROFILE</p><strong>{name}</strong><p>{userDetails?.email || "—"}</p><span>Registered participant</span></div>}
+          {showProfile && <div className="haunt-lobby-profile" id="lobby-player-profile"><p className="haunt-lobby-kicker">YOUR HUNTER PROFILE</p><strong>{name}</strong><p>{userDetails?.email || "—"}</p><p className="haunt-lobby-profile-wrong">Total Wrong Submissions: <strong>{Number(userDetails?.wrongAttempt) || 0}</strong></p><span>Registered participant</span></div>}
           <button type="button" className="haunt-lobby-logout" disabled={isLaunching} onClick={() => { closeProfile(); onLogout(); }}>Log out <span aria-hidden="true">↗</span></button>
         </div>
       </header>

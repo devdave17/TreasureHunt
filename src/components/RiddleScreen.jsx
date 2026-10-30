@@ -4,11 +4,25 @@ import OfficialLogo from './OfficialLogo';
 import './HauntGame.css';
 import { prepareVictoryAudio } from '../utils/victoryAudio';
 
-function Challenge({ riddle, onSubmit, onBack, isSolved, submissionError, isSubmitting }) {
+function Challenge({
+  riddle,
+  onSubmit,
+  onBack,
+  isSolved,
+  submissionError,
+  isSubmitting,
+  wrongAttempts = [],
+  totalWrong = 0,
+  isWrongAttemptsLoading = false,
+  wrongAttemptsError = "",
+}) {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
   const headingRef = useRef(null);
+  const levelWrongCount = wrongAttempts.find(
+    (entry) => Number(entry?.level) === Number(riddle?.level ?? riddle?.num),
+  )?.wrongCount;
   useEffect(() => {
     const focusTimer = setTimeout(() => {
       const desktop = window.matchMedia('(min-width: 901px) and (pointer: fine)').matches;
@@ -30,6 +44,11 @@ function Challenge({ riddle, onSubmit, onBack, isSolved, submissionError, isSubm
   return <main className="hg-page hg-challenge">
     <header className="hg-topline"><span>TREASURE OF CODE <b> / THE CHALLENGE CHAMBER</b></span><button className="hg-button hg-secondary" onClick={onBack}>← Back to map</button></header>
     <div className="horror-question-heading"><div><p className="hg-eyebrow">{riddle.stage || `CHECKPOINT ${riddle.num || ''}`}</p><h1 ref={headingRef} tabIndex={-1}>{riddle.title}</h1></div>{isSolved && <span className="hg-status solved">✓ Solved</span>}</div>
+    <section className="hg-wrong-attempt-stats" aria-label="Wrong submission counts" aria-live="polite">
+      <p><span>Wrong submissions on this level</span><strong>{isWrongAttemptsLoading ? "Loading…" : Number(levelWrongCount) || 0}</strong></p>
+      <p><span>Total Wrong Submissions</span><strong>{Number(totalWrong) || 0}</strong></p>
+      {wrongAttemptsError && <p className="hg-wrong-attempt-error" role="status">{wrongAttemptsError}</p>}
+    </section>
     <div className="dread-workflow" aria-label="Solving workflow"><span>01 / READ THE CLUE</span><i aria-hidden="true">→</i><span>02 / CODE & RUN LOCALLY</span><i aria-hidden="true">→</i><span>03 / TRANSMIT YOUR OUTPUT</span></div>
     <div className="horror-question-layout">
       <div className="horror-question-reading">

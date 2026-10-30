@@ -103,6 +103,7 @@ const mapQuestionToRiddle = (question, index, total) => {
   return {
     id: question.id,
     num: step,
+    level: Number(question.level) || step,
     icon: ["📜", "🧩", "⚙️", "🔮", "💎", "🧭", "🏺", "🗝️", "📦", "🧠"][
       (step - 1) % 10
     ],
@@ -133,6 +134,7 @@ const App = () => {
     email: "",
     name: "",
     score: 0,
+    wrongAttempt: 0,
     currentLevel: 1,
     completedLevels: [],
   });
@@ -140,6 +142,9 @@ const App = () => {
   const [selectedQuestId, setSelectedQuestId] = useState("");
   const [activeQuestId, setActiveQuestId] = useState("");
   const [questions, setQuestions] = useState([]);
+  const [wrongAttempts, setWrongAttempts] = useState([]);
+  const [isWrongAttemptsLoading, setIsWrongAttemptsLoading] = useState(false);
+  const [wrongAttemptsError, setWrongAttemptsError] = useState("");
   const [questLevelCounts, setQuestLevelCounts] = useState({});
   const [loadingQuests, setLoadingQuests] = useState(true);
   const [questError, setQuestError] = useState("");
@@ -238,6 +243,38 @@ const App = () => {
       setQuestLevelCounts(nextCounts);
     } catch (error) {
       console.error("Failed to refresh quest level distribution:", error);
+    }
+  };
+
+  const refreshWrongAttempts = async (questId = "", level) => {
+    const normalizedQuestId = String(questId || "").trim();
+    setIsWrongAttemptsLoading(true);
+    setWrongAttemptsError("");
+
+    try {
+      const payload = await gameApi.getWrongAttempts(
+        normalizedQuestId,
+        localStorage.getItem("player_token"),
+        level,
+      );
+      if (normalizedQuestId) {
+        setWrongAttempts(Array.isArray(payload?.levels) ? payload.levels : []);
+      }
+      setUserDetails((currentUser) => {
+        const nextUser = {
+          ...currentUser,
+          wrongAttempt: Number(payload?.totalWrong) || 0,
+        };
+        if (nextUser.id) {
+          localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(nextUser));
+        }
+        return nextUser;
+      });
+    } catch (error) {
+      console.error("Failed to refresh wrong-attempt counts:", error);
+      setWrongAttemptsError("Wrong-submission counts are temporarily unavailable.");
+    } finally {
+      setIsWrongAttemptsLoading(false);
     }
   };
 
@@ -353,6 +390,7 @@ const App = () => {
       );
 
       setQuestions(questionList);
+      await refreshWrongAttempts(questId, nextLevel);
       setSelectedQuestId(questId);
       setActiveQuestId(questId);
       setActiveRiddle(Math.min(nextLevel, Math.max(questionList.length, 1)));
@@ -407,11 +445,13 @@ const App = () => {
           email: parsed.email,
           name: parsed.name,
           score: Number(parsed.score) || 0,
+          wrongAttempt: Number(parsed.wrongAttempt) || 0,
           currentLevel: Number(parsed.currentLevel) || 1,
           completedLevels: Array.isArray(parsed.completedLevels)
             ? parsed.completedLevels
             : [],
         });
+        void refreshWrongAttempts();
         setCurrentScreen("screen-quest");
       }
     } catch {
@@ -763,6 +803,7 @@ const App = () => {
         email: player.email || email,
         name: player.name || "",
         score: Number(player.score) || 0,
+        wrongAttempt: Number(player.wrongAttempt) || 0,
         currentLevel: Number(player.currentLevel) || 1,
         completedLevels: Array.isArray(player.completedLevels)
           ? player.completedLevels
@@ -780,6 +821,7 @@ const App = () => {
       if (token) {
         localStorage.setItem("player_token", token);
       }
+      void refreshWrongAttempts();
 
       setQuestError("");
       setShouldShowProfileModal(true);
@@ -910,6 +952,10 @@ const App = () => {
       }
 
       setQuestions(questionList);
+      void refreshWrongAttempts(
+        questIdForTimer,
+        Number(firstQuestion?.level) || 1,
+      );
 
       try {
         await refreshQuestLevelDistribution(
@@ -979,6 +1025,10 @@ const App = () => {
       setActiveRiddle(riddleNum);
     }
     goScreen("screen-riddle");
+    void refreshWrongAttempts(
+      activeQuestId || selectedQuestId,
+      Number(question.level) || riddleNum,
+    );
   };
 
   const submitRiddleKey = async (key) => {
@@ -1021,6 +1071,18 @@ const App = () => {
         userDetails.id,
       );
 
+      setWrongAttempts(
+        Array.isArray(validation?.levels) ? validation.levels : [],
+      );
+      setUserDetails((currentUser) => {
+        const nextUser = {
+          ...currentUser,
+          wrongAttempt: Number(validation?.totalWrong ?? validation?.wrongAttempt) || 0,
+        };
+        localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(nextUser));
+        return nextUser;
+      });
+
       if (!validation?.isCorrect) {
         setRiddleSubmitError("Incorrect answer. Please check your output and try again.");
         setIsSubmittingRiddle(false);
@@ -1045,6 +1107,11 @@ const App = () => {
       if (activeRiddle >= questions.length) {
         showWinner();
       } else {
+        const nextQuestion = questions[activeRiddle];
+        await refreshWrongAttempts(
+          questIdForValidation,
+          Number(nextQuestion?.level) || activeRiddle + 1,
+        );
         setActiveRiddle((prev) => prev + 1);
         goScreen("screen-map");
       }
@@ -1248,12 +1315,16 @@ const App = () => {
       email: "",
       name: "",
       score: 0,
+      wrongAttempt: 0,
       currentLevel: 1,
       completedLevels: [],
     });
     setSelectedQuestId("");
     setActiveQuestId("");
     setQuestions([]);
+    setWrongAttempts([]);
+    setIsWrongAttemptsLoading(false);
+    setWrongAttemptsError("");
     setQuestLevelCounts({});
     setSolvedCount(0);
     setActiveRiddle(0);
@@ -1356,6 +1427,10 @@ const App = () => {
             onBack={handleBackToMap}
             submissionError={riddleSubmitError}
             isSubmitting={isSubmittingRiddle}
+            wrongAttempts={wrongAttempts}
+            totalWrong={userDetails.wrongAttempt}
+            isWrongAttemptsLoading={isWrongAttemptsLoading}
+            wrongAttemptsError={wrongAttemptsError}
           />
         </>
       </section>

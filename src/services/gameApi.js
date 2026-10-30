@@ -127,6 +127,28 @@ export const gameApi = {
     };
   },
 
+  async getWrongAttempts(questId, token, level) {
+    const query = new URLSearchParams();
+    if (questId) {
+      query.set("questId", questId);
+    }
+    if (level !== undefined) {
+      query.set("level", String(level));
+    }
+
+    const response = await fetch(
+      `${BASE_URL}/game/progress/wrong-attempts?${query.toString()}`,
+      { headers: getAuthHeaders(token) },
+    );
+
+    if (!response.ok) {
+      const error = await parseJsonSafe(response);
+      throw new Error(error.error || "Failed to get wrong-attempt counts");
+    }
+
+    return parseJsonSafe(response);
+  },
+
   // Submit question answer for a specific quest/question
   async submitAnswer(questId, questionId, answer, token, userId) {
     console.log("[gameApi.submitAnswer] request", {

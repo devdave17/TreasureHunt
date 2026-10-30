@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -36,6 +37,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jest": "^30.5.2",
+    "mongodb-memory-server": "^10.4.3",
+    "supertest": "^7.3.1",
     "vite": "^8.0.1"
   }
 }

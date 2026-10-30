@@ -44,6 +44,10 @@
 .hg-checkpoint-bottom {display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;border-top:1px solid #eee0d31c;margin-top:26px;padding-top:17px;font-size:10px;color:#9e99ac;}.hg-checkpoint-bottom strong {color:#eeb38c;font-weight:500;}.locked .hg-checkpoint-bottom strong {color:#9e99ac;}
 .hg-footer {display:flex;justify-content:space-between;gap:20px;border-top:1px solid #eee0d322;margin-top:45px;padding:25px 0;font-size:9px;letter-spacing:1px;color:#a29aaf;}
 .hg-empty {padding:40px;border:1px solid #eee0d322;color:#bcb4c5;background:#111520;}
+.hg-wrong-attempt-stats {display:flex;flex-wrap:wrap;gap:12px;margin:18px 0;}
+.hg-wrong-attempt-stats > p:not(.hg-wrong-attempt-error) {display:flex;flex:1 1 190px;justify-content:space-between;align-items:center;gap:14px;padding:13px 15px;border:1px solid #f0c39b2b;border-radius:4px;background:#11151f;color:#c5bac8;font-size:11px;}
+.hg-wrong-attempt-stats strong {color:#ffc596;font:20px Georgia,serif;}
+.hg-wrong-attempt-stats .hg-wrong-attempt-error {flex-basis:100%;color:#ffadae;font-size:11px;}
 .hg-challenge-grid {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.35fr);gap:32px;margin-top:30px;align-items:start;}
 .hg-clue {background:#12131f;border:1px solid #ded0ef25;border-radius:6px;overflow:hidden;}.hg-clue > img {width:100%;height:225px;object-fit:cover;display:block;mask-image:linear-gradient(#000 65%,transparent);}
 .hg-clue-copy {padding:0 32px 30px;margin-top:-18px;position:relative;}.hg-clue-copy h1 {font-size:clamp(28px,3vw,43px);line-height:1.2;letter-spacing:-.7px;margin-bottom:20px;overflow-wrap:anywhere;}.hg-clue blockquote {margin:25px 0;color:#e0d3df;font:italic 20px/1.65 Georgia,serif;white-space:pre-line;overflow-wrap:anywhere;}.hg-clue-note {color:#a09aaf;font-size:11px;line-height:1.7;border-top:1px solid #eee0d322;padding-top:23px;}

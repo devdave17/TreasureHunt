@@ -5,6 +5,7 @@ import {
   getQuestRanking,
   getQuestLevelDistribution,
   getUserProgress,
+  getWrongAttempts,
   loginPlayer,
   updatePlayerProgress,
   startQuestionTimer,
@@ -36,6 +37,7 @@ router.post("/quests/:questId/finalize", playerAuth, finalizeQuestAttempt);
 router.post("/quests/:questId/close-session", playerAuth, closeQuestSessionRoute);
 router.post("/update-progress", playerAuth, updateProgressLimiter, updatePlayerProgress);
 router.post("/start-timer", playerAuth, startQuestionTimer);
+router.get("/progress/wrong-attempts", playerAuth, getWrongAttempts);
 router.get("/progress/:userId", playerAuth, getUserProgress);
 
 export default router;
