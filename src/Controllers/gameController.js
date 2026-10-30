@@ -1279,14 +1279,6 @@ export const updatePlayerProgress = async (req, res) => {
     const { questId, questionId, level, points } = req.body || {};
     const userId = String(req.playerId || "");
 
-    console.log("[updatePlayerProgress] request", {
-      userId,
-      questId,
-      questionId,
-      level,
-      points,
-    });
-
     if (!userId || !questId || !level) {
       return res.status(400).json({ error: "userId, questId and level are required" });
     }
@@ -1313,10 +1305,6 @@ export const updatePlayerProgress = async (req, res) => {
     }
 
     const questProgressRef = getQuestProgressDocRef(userId, questId);
-    console.log("[updatePlayerProgress] questProgress doc", {
-      docId: questProgressRef.id,
-      path: questProgressRef.path,
-    });
     const questProgressSnap = await questProgressRef.get();
     const questProgressData = questProgressSnap.exists ? questProgressSnap.data() || {} : {};
     const questStartTime = questProgressData.questStartTime || new Date();
@@ -1407,14 +1395,6 @@ export const updatePlayerProgress = async (req, res) => {
     invalidateQuestRankingCache(questId);
     scheduleQuestDistributionBroadcast(req.io, questId);
 
-    console.log("[updatePlayerProgress] saved", {
-      docId: questProgressRef.id,
-      questId,
-      userId,
-      currentQuestionLevel: updatedProgress.currentQuestionLevel,
-      score: updatedProgress.score,
-    });
-
     res.json({
       message: "Progress updated successfully",
       progress: updatedProgress,
@@ -1429,12 +1409,6 @@ export const startQuestionTimer = async (req, res) => {
   try {
     const { level, questId } = req.body || {};
     const userId = String(req.playerId || "");
-
-    console.log("[startQuestionTimer] request", {
-      userId,
-      level,
-      questId,
-    });
 
     if (!userId || !level || !questId) {
       return res.status(400).json({ error: "userId, level and questId are required" });
@@ -1466,10 +1440,6 @@ export const startQuestionTimer = async (req, res) => {
     }
 
     const questProgressRef = getQuestProgressDocRef(userId, questId);
-    console.log("[startQuestionTimer] questProgress doc", {
-      docId: questProgressRef.id,
-      path: questProgressRef.path,
-    });
     const now = new Date();
     const questStartAtMs = getQuestStartAtMs({
       startAtMs: questData?.startAtMs,
@@ -1544,14 +1514,6 @@ export const startQuestionTimer = async (req, res) => {
     );
     invalidateQuestRankingCache(questId);
     scheduleQuestDistributionBroadcast(req.io, questId);
-
-    console.log("[startQuestionTimer] saved", {
-      docId: questProgressRef.id,
-      questId,
-      userId,
-      questStartTime: questProgress.questStartTime,
-      questDurationMinutes,
-    });
 
     res.json({
       message: "Question timer started",
@@ -1836,12 +1798,6 @@ export const validateQuestAnswer = async (req, res) => {
     const { answer } = req.body || {};
     const userId = String(req.playerId || "");
 
-    console.log("[validateQuestAnswer] request", {
-      questId,
-      questionId,
-      answer,
-    });
-
     if (!questId || !questionId) {
       return res.status(400).json({ error: "questId and questionId are required" });
     }
@@ -1932,15 +1888,6 @@ export const validateQuestAnswer = async (req, res) => {
         .status(409)
         .json(getQuestExpiryPayload(questData, finalServerNowMs));
     }
-
-    console.log("[validateQuestAnswer] result", {
-      questId,
-      questionId,
-      normalizedInput,
-      validationMode,
-      expectedAnswersCount: expectedAnswers.length,
-      isCorrect,
-    });
 
     let wrongAttempts = await ensureQuestProgressWrongAttemptLevel(
       userId,

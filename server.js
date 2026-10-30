@@ -52,16 +52,6 @@ app.use((req, res, next) => {
   next()
 })
 
-app.use((req, res, next) => {
-  const startedAt = Date.now();
-
-  res.on("finish", () => {
-    
-  });
-
-  next();
-});
-
 // 👇 routes
 app.post("/admin/auth/login", adminLoginLimiter, loginAdmin)
 app.use("/admin", adminAuth, adminRoutes)

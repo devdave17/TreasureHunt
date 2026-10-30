@@ -45,11 +45,6 @@ export const gameApi = {
   // Start timer for a question
   async startQuestionTimer(userId, level, questId, token) {
     const clientRequestSentAtMs = Date.now();
-    console.log("[gameApi.startQuestionTimer] request", {
-      userId,
-      level,
-      questId,
-    });
     const response = await fetch(`${BASE_URL}/game/start-timer`, {
       method: "POST",
       headers: getAuthHeaders(token),
@@ -61,11 +56,6 @@ export const gameApi = {
       throw new Error(error.error || "Failed to start timer");
     }
 
-    console.log("[gameApi.startQuestionTimer] response ok", {
-      userId,
-      level,
-      questId,
-    });
 
     const payload = await parseJsonSafe(response);
     return {
@@ -77,13 +67,6 @@ export const gameApi = {
 
   // Update user level and score after completing a question
   async updateProgress(userId, questId, questionId, level, points, token) {
-    console.log("[gameApi.updateProgress] request", {
-      userId,
-      questId,
-      questionId,
-      level,
-      points,
-    });
     const response = await fetch(`${BASE_URL}/game/update-progress`, {
       method: "POST",
       headers: getAuthHeaders(token),
@@ -95,13 +78,6 @@ export const gameApi = {
       throw new Error(error.error || "Failed to update progress");
     }
 
-    console.log("[gameApi.updateProgress] response ok", {
-      userId,
-      questId,
-      questionId,
-      level,
-      points,
-    });
 
     return parseJsonSafe(response);
   },
@@ -151,11 +127,6 @@ export const gameApi = {
 
   // Submit question answer for a specific quest/question
   async submitAnswer(questId, questionId, answer, token, userId) {
-    console.log("[gameApi.submitAnswer] request", {
-      questId,
-      questionId,
-      answer,
-    });
     const response = await fetch(
       `${BASE_URL}/game/quests/${encodeURIComponent(questId)}/questions/${encodeURIComponent(questionId)}/validate`,
       {
@@ -170,10 +141,6 @@ export const gameApi = {
       throw new Error(error.error || "Failed to validate answer");
     }
 
-    console.log("[gameApi.submitAnswer] response ok", {
-      questId,
-      questionId,
-    });
 
     return parseJsonSafe(response);
   },
