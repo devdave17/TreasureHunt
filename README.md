@@ -167,6 +167,33 @@ state.
 | `npm run lint` | Run ESLint across the project |
 | `node server.js` | Start the Express and Socket.IO backend |
 
+## 400-player load test
+
+The k6 scenario in
+[`load-tests/college-event-400-vu.js`](load-tests/college-event-400-vu.js)
+simulates 400 players logging in from one NAT IP, loading the quest, and
+submitting an answer. Run it only against a disposable/staging database with
+dedicated test users:
+
+```bash
+k6 run load-tests/college-event-400-vu.js \
+  -e BASE_URL=https://staging-api.example.com \
+  -e QUEST_ID=<quest-id> \
+  -e QUESTION_ID=<question-id> \
+  -e TEST_PASSWORD=<test-password> \
+  -e TEST_EMAIL_PREFIX=loadtest-player
+```
+
+Create 400 registered emails matching
+`loadtest-player1@loadtest.invalid` through
+`loadtest-player400@loadtest.invalid` before the run. The default player-login
+limit is 500 requests per IP per minute, configurable with
+`PLAYER_LOGIN_RATE_LIMIT_MAX`. After authentication, answer validation is
+limited per authenticated player (30 requests per minute), not per IP, so a
+shared college Wi-Fi address does not combine the players' answer budgets.
+The test must report zero `429` responses, p95 answer latency below 1.5s, and
+p99 below 3s before the event is considered ready.
+
 ## Deployment
 
 ### Frontend on Vercel
@@ -196,6 +223,7 @@ provider. Configure:
 - `INVIGILATOR_USERNAME`
 - `INVIGILATOR_PASSWORD`
 - `PLAYER_MASTER_PASSWORD`
+- `PLAYER_LOGIN_RATE_LIMIT_MAX` (optional; defaults to `500`)
 
 After deployment, set the Vercel frontend's `VITE_API_BASE_URL` to the backend
 URL and redeploy the frontend.

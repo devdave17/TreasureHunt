@@ -18,6 +18,32 @@ The test suite must prove that:
 The suite should not use live production credentials or a production database.
 Use deterministic fixtures and a disposable test database.
 
+## 1.1 College event load test
+
+Before the event, run
+[`load-tests/college-event-400-vu.js`](load-tests/college-event-400-vu.js)
+against staging with 400 dedicated test users and the same deployment topology
+that production will use. The scenario ramps to 400 concurrent virtual users,
+logs each user in, fetches the quest questions, and submits one answer.
+
+Validate all of the following:
+
+- no login or answer request returns `429`;
+- HTTP failure rate remains below 1%;
+- answer p95 latency is below 1.5 seconds and p99 below 3 seconds;
+- MongoDB CPU, connections, operation latency, and error rate remain within
+  the hosting plan's limits;
+- the application instance stays responsive while Socket.IO connections are
+  opened and closed during the run.
+
+`playerLoginLimiter` is intentionally IP-based because login is unauthenticated;
+its default is 500 requests per IP per minute and can be overridden with
+`PLAYER_LOGIN_RATE_LIMIT_MAX`. `validateAnswerLimiter` is applied after player
+authentication and is keyed by `playerId`, so 400 users behind one college NAT
+share the login budget but do not share the answer-submission budget. If the
+login test produces `429`, stop and fix the deployment configuration before
+testing answer throughput.
+
 ## 2. Recommended test stack
 
 The repository currently has no test runner or test files. Add the following
