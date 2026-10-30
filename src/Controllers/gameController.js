@@ -918,18 +918,6 @@ export const loginPlayer = async (req, res) => {
         .json({ error: "Server misconfigured. Set PLAYER_JWT_SECRET." });
     }
 
-    const token = jwt.sign(
-      {
-        type: "player",
-        role: "player",
-      },
-      playerJwtSecret,
-      {
-        subject: playerId,
-        expiresIn: "6h",
-      },
-    );
-
     res.json({
       message: "Login successful",
       token,
